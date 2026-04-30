@@ -22,6 +22,11 @@ class CourseCard extends StatelessWidget {
     final useLightText = isDarkColor(course.colorValue);
     final textColor = useLightText ? Colors.white : Colors.black87;
 
+    // 合并教室和教师，节省垂直空间
+    String detail = [course.room, course.teacher]
+        .where((s) => s.isNotEmpty)
+        .join(' · ');
+
     return GestureDetector(
       onTap: onTap,
       onLongPress: onLongPress,
@@ -42,7 +47,7 @@ class CourseCard extends StatelessWidget {
         padding: const EdgeInsets.all(4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             Text(
               course.name,
@@ -50,22 +55,20 @@ class CourseCard extends StatelessWidget {
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
                 color: textColor,
+                height: 1.1,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            const Spacer(),
-            if (course.room.isNotEmpty)
+            const SizedBox(height: 2),
+            if (detail.isNotEmpty)
               Text(
-                course.room,
-                style: TextStyle(fontSize: 9, color: textColor.withAlpha(200)),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            if (course.teacher.isNotEmpty)
-              Text(
-                course.teacher,
-                style: TextStyle(fontSize: 9, color: textColor.withAlpha(180)),
+                detail,
+                style: TextStyle(
+                  fontSize: 9,
+                  color: textColor.withAlpha(200),
+                  height: 1.1,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
