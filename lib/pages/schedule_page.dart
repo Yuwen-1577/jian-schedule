@@ -37,15 +37,11 @@ class _SchedulePageState extends State<SchedulePage> {
     final provider = context.watch<ScheduleProvider>();
     final currentWeek = provider.currentWeek;
 
-    // 计算当前周对应的日期（该周周一）
-    final semesterStart = provider.semesterStart;
-    final weekMonday = semesterStart.add(Duration(days: (currentWeek - 1) * 7));
-    // 用周一作为显示日期
-    final displayDate = weekMonday;
+    // 使用今天的真实日期和星期
     final now = DateTime.now();
     final weekdayNames = ['一', '二', '三', '四', '五', '六', '日'];
-    String dateStr = '${displayDate.year}.${displayDate.month}.${displayDate.day}';
-    String weekDayStr = '周${weekdayNames[displayDate.weekday - 1]}';
+    String dateStr = '${now.year}.${now.month}.${now.day}';
+    String weekDayStr = '周${weekdayNames[now.weekday - 1]}';
     String titleStr = '$dateStr 第$currentWeek周 $weekDayStr';
 
     return Scaffold(
