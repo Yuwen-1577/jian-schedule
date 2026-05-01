@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/course.dart';
 import '../models/time_slot.dart';
 import '../providers/schedule_provider.dart';
+import '../pages/course_edit_page.dart';
 import '../utils/constants.dart';
 
 class TodayCourses extends StatelessWidget {
@@ -46,7 +47,13 @@ class TodayCourses extends StatelessWidget {
                 course: course,
                 timeSlots: timeSlots,
                 onTap: () =>
-                    Navigator.pushNamed(context, '/course_edit', arguments: course),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const CourseEditPage(),
+                        settings: RouteSettings(arguments: course),
+                      ),
+                    ),
               )),
         // 当前进度
         if (timeSlots.isNotEmpty) const _CurrentTimeIndicator(),

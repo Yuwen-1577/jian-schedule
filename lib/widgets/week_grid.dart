@@ -5,6 +5,7 @@ import '../models/time_slot.dart';
 import '../providers/schedule_provider.dart';
 import '../providers/settings_provider.dart';
 import '../utils/constants.dart';
+import '../pages/course_edit_page.dart';
 import 'course_card.dart';
 import 'time_column.dart';
 
@@ -242,7 +243,13 @@ class _GridBody extends StatelessWidget {
   }
 
   void _onCourseTap(BuildContext context, Course course) {
-    Navigator.pushNamed(context, '/course_edit', arguments: course);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const CourseEditPage(),
+        settings: RouteSettings(arguments: course),
+      ),
+    );
   }
 
   void _onCourseLongPress(BuildContext context, Course course) {
@@ -264,7 +271,13 @@ class _GridBody extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              Navigator.pushNamed(context, '/course_edit', arguments: course);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const CourseEditPage(),
+                  settings: RouteSettings(arguments: course),
+                ),
+              );
             },
             child: const Text('编辑'),
           ),

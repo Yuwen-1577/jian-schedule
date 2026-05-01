@@ -136,14 +136,14 @@ class _SettingsPageState extends State<SettingsPage> {
               children: [
                 const ListTile(
                   leading: Icon(Icons.info_outline),
-                  title: Text('WakeUp课程表'),
+                  title: const Text('简课表'),
                   subtitle: Text('跨平台课表管理工具'),
                 ),
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.code),
                   title: const Text('版本'),
-                  subtitle: const Text('v1.0.0'),
+                  subtitle: const Text('v1.0.2'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {},
                 ),
