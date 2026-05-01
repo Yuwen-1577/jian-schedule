@@ -143,7 +143,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ListTile(
                   leading: const Icon(Icons.code),
                   title: const Text('版本'),
-                  subtitle: const Text('v1.0.2'),
+                  subtitle: const Text('v1.1.0'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {},
                 ),
