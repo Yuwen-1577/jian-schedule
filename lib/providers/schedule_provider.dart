@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/course.dart';
+import '../models/schedule_set.dart';
 import '../models/time_slot.dart';
 import '../services/database_service.dart';
 import '../utils/constants.dart';
@@ -13,12 +14,25 @@ class ScheduleProvider extends ChangeNotifier {
   int _maxPeriod = 12;
   DateTime _semesterStart = defaultSemesterStart;
 
+  List<ScheduleSet> _scheduleSets = [];
+  String _activeSetId = 'default';
+
   // Getters
   List<Course> get courses => _courses;
   List<TimeSlot> get timeSlots => _timeSlots;
   int get currentWeek => _currentWeek;
   int get maxPeriod => _maxPeriod;
   DateTime get semesterStart => _semesterStart;
+  List<ScheduleSet> get scheduleSets => _scheduleSets;
+  String get activeSetId => _activeSetId;
+
+  ScheduleSet? get activeSet {
+    if (_scheduleSets.isEmpty) return null;
+    return _scheduleSets.firstWhere(
+      (s) => s.id == _activeSetId,
+      orElse: () => _scheduleSets.first,
+    );
+  }
 
   // 获取指定周几的课程 (已按节次排序)
   List<Course> getCoursesForDay(int week, int day) {
@@ -54,15 +68,80 @@ class ScheduleProvider extends ChangeNotifier {
 
   // 加载数据
   Future<void> loadData() async {
-    _courses = await _db.getCourses();
+    _scheduleSets = await _db.getScheduleSets();
+    // 确保 activeSetId 存在
+    if (_scheduleSets.isNotEmpty &&
+        !_scheduleSets.any((s) => s.id == _activeSetId)) {
+      _activeSetId = _scheduleSets.first.id;
+    }
+    // 设置学期开始日期
+    final set = activeSet;
+    if (set != null) {
+      _semesterStart = set.semesterStart;
+    }
+    await _loadCoursesForActiveSet();
     _timeSlots = await _db.getTimeSlots();
     _maxPeriod = _timeSlots.isNotEmpty ? _timeSlots.last.period : 12;
     recalculateWeek();
     notifyListeners();
   }
 
+  Future<void> _loadCoursesForActiveSet() async {
+    _courses = await _db.getCoursesBySet(_activeSetId);
+  }
+
+  // 切换课表集
+  Future<void> switchSet(String setId) async {
+    if (setId == _activeSetId) return;
+    _activeSetId = setId;
+    final set = activeSet;
+    if (set != null) {
+      _semesterStart = set.semesterStart;
+    }
+    await _loadCoursesForActiveSet();
+    recalculateWeek();
+    notifyListeners();
+  }
+
+  // 创建课表集
+  Future<ScheduleSet> createSet(String name) async {
+    final maxOrder = _scheduleSets.isEmpty
+        ? 0
+        : _scheduleSets.map((s) => s.sortOrder).reduce((a, b) => a > b ? a : b);
+    final set = ScheduleSet(
+      name: name,
+      semesterStart: defaultSemesterStart,
+      sortOrder: maxOrder + 1,
+    );
+    await _db.insertScheduleSet(set);
+    _scheduleSets.add(set);
+    notifyListeners();
+    return set;
+  }
+
+  // 重命名课表集
+  Future<void> renameSet(String id, String name) async {
+    final set = _scheduleSets.firstWhere((s) => s.id == id);
+    set.name = name;
+    await _db.updateScheduleSet(set);
+    notifyListeners();
+  }
+
+  // 删除课表集
+  Future<void> deleteSet(String id) async {
+    if (_scheduleSets.length <= 1) return; // 不能删除最后一个
+    await _db.deleteScheduleSet(id);
+    _scheduleSets.removeWhere((s) => s.id == id);
+    // 如果删除的是当前活动集，切换到第一个
+    if (_activeSetId == id && _scheduleSets.isNotEmpty) {
+      await switchSet(_scheduleSets.first.id);
+    }
+    notifyListeners();
+  }
+
   // 添加课程
   Future<void> addCourse(Course course) async {
+    course.scheduleSetId = _activeSetId;
     await _db.insertCourse(course);
     _courses.add(course);
     notifyListeners();
@@ -115,5 +194,15 @@ class ScheduleProvider extends ChangeNotifier {
     final result = await _db.importFromJson(jsonStr);
     await loadData();
     return result;
+  }
+
+  // 导入课程到当前课表集
+  Future<void> importCoursesToActiveSet(List<Course> courses) async {
+    for (final course in courses) {
+      course.scheduleSetId = _activeSetId;
+    }
+    await _db.insertCourses(courses);
+    _courses.addAll(courses);
+    notifyListeners();
   }
 }

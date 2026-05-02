@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
 import '../providers/schedule_provider.dart';
 import '../providers/settings_provider.dart';
+import '../services/xls_import_service.dart';
 import '../utils/constants.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -117,6 +119,14 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 const Divider(height: 1),
                 ListTile(
+                  leading: const Icon(Icons.table_chart),
+                  title: const Text('从 Excel 导入'),
+                  subtitle: const Text('支持 .xlsx 格式课表文件'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _importFromExcel(provider),
+                ),
+                const Divider(height: 1),
+                ListTile(
                   leading:
                       const Icon(Icons.delete_outline, color: Colors.red),
                   title: const Text('清除所有数据',
@@ -143,7 +153,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ListTile(
                   leading: const Icon(Icons.code),
                   title: const Text('版本'),
-                  subtitle: const Text('v1.1.0'),
+                  subtitle: const Text('v1.2.0'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {},
                 ),
@@ -287,6 +297,71 @@ class _SettingsPageState extends State<SettingsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('所有数据已清除')),
       );
+    }
+  }
+
+  void _importFromExcel(ScheduleProvider provider) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+      );
+      if (result == null || result.files.isEmpty) return;
+
+      final filePath = result.files.first.path;
+      if (filePath == null) return;
+
+      if (!mounted) return;
+
+      // 显示加载中
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final courses = await XlsImportService.parseFile(filePath);
+
+      if (!mounted) return;
+      Navigator.pop(context); // 关闭加载
+
+      if (courses.isEmpty) {
+        _showError('未解析到任何课程，请检查文件格式');
+        return;
+      }
+
+      // 确认导入
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('导入 Excel 课表'),
+          content: Text('解析到 ${courses.length} 门课程，是否导入到当前课表集？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('导入'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true) {
+        await provider.importCoursesToActiveSet(courses);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('成功导入 ${courses.length} 门课程')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // 关闭加载（如果还在）
+        _showError('导入失败: $e');
+      }
     }
   }
 

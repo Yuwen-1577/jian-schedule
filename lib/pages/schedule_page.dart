@@ -8,6 +8,7 @@ import '../utils/constants.dart';
 import 'course_edit_page.dart';
 import 'time_setting_page.dart';
 import 'settings_page.dart';
+import 'schedule_set_manage_page.dart';
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({super.key});
@@ -55,7 +56,21 @@ class _SchedulePageState extends State<SchedulePage> {
               curve: Curves.easeInOut,
             );
           },
-          child: Text(titleStr, style: const TextStyle(fontSize: 16)),
+          child: Column(
+            children: [
+              Text(titleStr, style: const TextStyle(fontSize: 16)),
+              if (provider.scheduleSets.length > 1)
+                Text(
+                  provider.activeSet?.name ?? '',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.6)),
+                ),
+            ],
+          ),
         ),
         actions: [
           IconButton(
@@ -72,29 +87,52 @@ class _SchedulePageState extends State<SchedulePage> {
           ),
           PopupMenuButton<String>(
             onSelected: (value) {
-              switch (value) {
-                case 'time':
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const TimeSettingPage()),
-                  );
-                  break;
-                case 'settings':
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SettingsPage()),
-                  );
-                  break;
-                case 'today':
-                  Scaffold.of(context).openEndDrawer();
-                  break;
+              if (value == 'time') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const TimeSettingPage()),
+                );
+              } else if (value == 'settings') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsPage()),
+                );
+              } else if (value == 'today') {
+                Scaffold.of(context).openEndDrawer();
+              } else if (value == 'manage_sets') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const ScheduleSetManagePage()),
+                );
+              } else if (value.startsWith('set:')) {
+                provider.switchSet(value.substring(4));
               }
             },
             itemBuilder: (context) => [
               const PopupMenuItem(value: 'today', child: Text('今日课程')),
               const PopupMenuItem(value: 'time', child: Text('时间设置')),
               const PopupMenuItem(value: 'settings', child: Text('设置')),
+              if (provider.scheduleSets.isNotEmpty) ...[
+                const PopupMenuDivider(),
+                ...provider.scheduleSets.map((set) => PopupMenuItem(
+                      value: 'set:${set.id}',
+                      child: Row(
+                        children: [
+                          if (set.id == provider.activeSetId)
+                            Icon(Icons.check,
+                                size: 18,
+                                color:
+                                    Theme.of(context).colorScheme.primary),
+                          if (set.id == provider.activeSetId)
+                            const SizedBox(width: 8),
+                          Text(set.name),
+                        ],
+                      ),
+                    )),
+                const PopupMenuItem(
+                    value: 'manage_sets', child: Text('管理课表集...')),
+              ],
             ],
           ),
         ],

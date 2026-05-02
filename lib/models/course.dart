@@ -13,6 +13,7 @@ class Course {
   int weekType; // 0=全周, 1=单周, 2=双周
   int colorValue; // 课程颜色 ARGB
   String note;
+  String scheduleSetId; // 所属课表集 ID
 
   Course({
     required this.id,
@@ -27,6 +28,7 @@ class Course {
     this.weekType = 0,
     this.colorValue = 0xFF4CAF50,
     this.note = '',
+    this.scheduleSetId = '',
   });
 
   // 判断该课程在指定周次是否上课
@@ -54,6 +56,7 @@ class Course {
       'weekType': weekType,
       'colorValue': colorValue,
       'note': note,
+      'scheduleSetId': scheduleSetId,
     };
   }
 
@@ -71,6 +74,7 @@ class Course {
       weekType: map['weekType'] as int? ?? 0,
       colorValue: map['colorValue'] as int? ?? 0xFF4CAF50,
       note: map['note'] as String? ?? '',
+      scheduleSetId: map['scheduleSetId'] as String? ?? '',
     );
   }
 
@@ -92,6 +96,7 @@ class Course {
     int? weekType,
     int? colorValue,
     String? note,
+    String? scheduleSetId,
   }) {
     return Course(
       id: id ?? this.id,
@@ -106,6 +111,7 @@ class Course {
       weekType: weekType ?? this.weekType,
       colorValue: colorValue ?? this.colorValue,
       note: note ?? this.note,
+      scheduleSetId: scheduleSetId ?? this.scheduleSetId,
     );
   }
 }
