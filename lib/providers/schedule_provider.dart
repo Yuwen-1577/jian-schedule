@@ -3,6 +3,7 @@ import '../models/course.dart';
 import '../models/schedule_set.dart';
 import '../models/time_slot.dart';
 import '../services/database_service.dart';
+import '../services/widget_service.dart';
 import '../utils/constants.dart';
 
 class ScheduleProvider extends ChangeNotifier {
@@ -89,6 +90,7 @@ class ScheduleProvider extends ChangeNotifier {
     _maxPeriod = _timeSlots.isNotEmpty ? _timeSlots.last.period : 12;
     recalculateWeek();
     notifyListeners();
+    _syncWidgetData();
   }
 
   Future<void> _loadCoursesForActiveSet() async {
@@ -106,6 +108,7 @@ class ScheduleProvider extends ChangeNotifier {
     await _loadCoursesForActiveSet();
     recalculateWeek();
     notifyListeners();
+    _syncWidgetData();
   }
 
   // 创建课表集
@@ -151,6 +154,7 @@ class ScheduleProvider extends ChangeNotifier {
     await _db.insertCourse(course);
     _courses.add(course);
     notifyListeners();
+    _syncWidgetData();
   }
 
   // 更新课程
@@ -161,6 +165,7 @@ class ScheduleProvider extends ChangeNotifier {
       _courses[index] = course;
     }
     notifyListeners();
+    _syncWidgetData();
   }
 
   // 清空当前课表集所有课程
@@ -170,6 +175,7 @@ class ScheduleProvider extends ChangeNotifier {
     }
     _courses.clear();
     notifyListeners();
+    _syncWidgetData();
   }
 
   // 删除课程
@@ -177,6 +183,7 @@ class ScheduleProvider extends ChangeNotifier {
     await _db.deleteCourse(id);
     _courses.removeWhere((c) => c.id == id);
     notifyListeners();
+    _syncWidgetData();
   }
 
   // 更新时间段
@@ -199,6 +206,7 @@ class ScheduleProvider extends ChangeNotifier {
     _timeSlots = List.from(slots);
     _maxPeriod = slots.isNotEmpty ? slots.last.period : 12;
     notifyListeners();
+    _syncWidgetData();
   }
 
   // 导出 JSON
@@ -219,5 +227,19 @@ class ScheduleProvider extends ChangeNotifier {
     await _db.insertCourses(courses);
     _courses.addAll(courses);
     notifyListeners();
+    _syncWidgetData();
+  }
+
+  // 同步桌面小部件数据
+  void _syncWidgetData() {
+    // 获取今日课程
+    final todayCourses = getTodayCourses();
+    WidgetService.syncTodayCourses(todayCourses, _timeSlots);
+
+    // 同步周课表网格
+    WidgetService.syncWeekGrid(_courses, _currentWeek);
+
+    // 更新所有小部件
+    WidgetService.updateAll();
   }
 }

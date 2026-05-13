@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F5F5F5"
+    android:padding="8dp">
+
+    <TextView
+        android:id="@+id/widget_week_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="本周课表"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="#333333"
+        android:paddingBottom="8dp" />
+
+    <TableLayout
+        android:id="@+id/widget_week_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone"
+        android:stretchColumns="*">
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:id="@+id/week_header_mon"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="一"
+                android:textSize="11sp"
+                android:textColor="#666666"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/week_header_tue"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="二"
+                android:textSize="11sp"
+                android:textColor="#666666"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/week_header_wed"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="三"
+                android:textSize="11sp"
+                android:textColor="#666666"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/week_header_thu"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="四"
+                android:textSize="11sp"
+                android:textColor="#666666"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/week_header_fri"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="五"
+                android:textSize="11sp"
+                android:textColor="#666666"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/week_header_sat"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="六"
+                android:textSize="11sp"
+                android:textColor="#666666"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/week_header_sun"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="日"
+                android:textSize="11sp"
+                android:textColor="#666666"
+                android:gravity="center" />
+
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <FrameLayout
+                android:id="@+id/week_cell_mon"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:padding="2dp" />
+
+            <FrameLayout
+                android:id="@+id/week_cell_tue"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:padding="2dp" />
+
+            <FrameLayout
+                android:id="@+id/week_cell_wed"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:padding="2dp" />
+
+            <FrameLayout
+                android:id="@+id/week_cell_thu"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:padding="2dp" />
+
+            <FrameLayout
+                android:id="@+id/week_cell_fri"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:padding="2dp" />
+
+            <FrameLayout
+                android:id="@+id/week_cell_sat"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:padding="2dp" />
+
+            <FrameLayout
+                android:id="@+id/week_cell_sun"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:padding="2dp" />
+
+        </TableRow>
+
+    </TableLayout>
+
+    <TextView
+        android:id="@+id/widget_week_empty"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:text="暂无课程"
+        android:textSize="14sp"
+        android:textColor="#999999"
+        android:visibility="gone" />
+
+</LinearLayout>

@@ -103,6 +103,20 @@ class _SettingsPageState extends State<SettingsPage> {
             child: Column(
               children: [
                 ListTile(
+                  leading: const Icon(Icons.widgets_outlined),
+                  title: const Text('桌面小部件'),
+                  subtitle: const Text('将课表添加到手机桌面'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('请长按桌面 → 添加小部件 → 搜索简课表'),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(height: 1),
+                ListTile(
                   leading: const Icon(Icons.file_upload_outlined),
                   title: const Text('导出课表数据'),
                   subtitle: const Text('导出为 JSON 文件'),
@@ -160,7 +174,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ListTile(
                   leading: const Icon(Icons.code),
                   title: const Text('版本'),
-                  subtitle: const Text('v1.2.2'),
+                  subtitle: const Text('v1.3.0'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     Navigator.push(

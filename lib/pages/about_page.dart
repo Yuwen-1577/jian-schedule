@@ -55,7 +55,7 @@ class AboutPage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    'v1.2.2',
+                    'v1.3.0',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
@@ -75,7 +75,7 @@ class AboutPage extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.info_outline),
                   title: const Text('版本号'),
-                  subtitle: const Text('v1.2.2'),
+                  subtitle: const Text('v1.3.0'),
                 ),
                 const Divider(height: 1),
                 ListTile(
