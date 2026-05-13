@@ -37,7 +37,7 @@ flutter doctor
 ### 4. 安装依赖
 
 ```bash
-cd class/
+cd <project-dir>/
 flutter pub get
 ```
 

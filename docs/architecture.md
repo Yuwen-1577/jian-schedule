@@ -10,6 +10,14 @@
 
 ## 数据模型
 
+### ScheduleSet（课表集）
+```
+id: UUID字符串
+name: 课表集名称
+semesterStart: 学期开始日期 (ISO 8601)
+sortOrder: 排序序号
+```
+
 ### Course（课程）
 ```
 id: UUID字符串
@@ -24,6 +32,7 @@ endWeek: 结束周
 weekType: 0全周 / 1单周 / 2双周
 colorValue: ARGB 颜色值
 note: 备注
+scheduleSetId: 所属课表集 ID
 ```
 
 ### TimeSlot（时间段）
@@ -36,10 +45,14 @@ endTime: "HH:mm" 字符串
 ## 状态管理
 
 **ScheduleProvider** — 课程和时间表的单一数据源：
-- `courses` — 所有课程列表
+- `courses` — 当前活动课表集的课程列表
 - `timeSlots` — 所有时间段
 - `currentWeek` — 当前教学周（根据学期起始日自动计算）
+- `scheduleSets` — 所有课表集列表
+- `activeSetId` — 当前活动课表集 ID
 - `getCoursesForDay(week, day)` — 按周+日过滤课程（含单双周判断）
+- `switchSet(setId)` — 切换活动课表集
+- `createSet(name)` / `renameSet(id, name)` / `deleteSet(id)` — 课表集管理
 
 **SettingsProvider** — 应用设置：
 - `themeMode` — light/dark/system
@@ -66,24 +79,31 @@ endTime: "HH:mm" 字符串
 
 ## 数据库
 
-SQLite (`schedule.db`)，两张表：
+SQLite (`schedule.db`)，三张表：
 
 ```sql
+schedule_sets (id TEXT PK, name TEXT, semesterStart TEXT, sortOrder INT)
+
 courses (id TEXT PK, name TEXT, room TEXT, teacher TEXT, day INT, 
          startPeriod INT, duration INT, startWeek INT, endWeek INT,
-         weekType INT, colorValue INT, note TEXT)
+         weekType INT, colorValue INT, note TEXT, scheduleSetId TEXT)
 
 time_slots (period INT PK, startTime TEXT, endTime TEXT)
 ```
 
 ## 导出/导入
 
-JSON 格式：
+JSON 格式（v2.0）：
 ```json
 {
-  "version": "1.0",
-  "exportDate": "2026-04-30T...",
+  "version": "2.0",
+  "exportDate": "<ISO 8601 timestamp>",
+  "scheduleSets": [...],
   "courses": [...],
   "timeSlots": [...]
 }
 ```
+
+兼容 v1.0 格式（无 scheduleSets 字段），导入时自动创建默认课表集。
+
+Excel 导入：支持 .xlsx 格式教务系统课表文件，通过 `XlsImportService` 解析。

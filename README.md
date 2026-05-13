@@ -7,11 +7,14 @@
 - 周视图课表，横向滑动切换 1-25 周
 - 单双周自动过滤、今日周几高亮
 - 添加/编辑/删除课程（名称、教室、教师、时间、颜色）
+- 多课表集管理（创建/切换/重命名/删除）
+- Excel (.xlsx) 课表文件导入
 - 自定义上课时间表
 - 今日课程侧边栏 + 当前节次进度指示
 - 浅色/深色主题
 - JSON 数据导出/导入备份
 - 学期起始日设置（自动计算当前教学周）
+- 关于页面（版本信息、支持平台）
 
 ## 技术栈
 
@@ -26,16 +29,19 @@
 lib/
 ├── main.dart                  # 入口，MultiProvider 配置
 ├── models/
-│   ├── course.dart            # 课程模型（单双周、起止周、节次、颜色）
+│   ├── course.dart            # 课程模型（单双周、起止周、节次、颜色、所属课表集）
+│   ├── schedule_set.dart      # 课表集模型（名称、学期开始日期）
 │   └── time_slot.dart         # 上课时间段模型
 ├── providers/
-│   ├── schedule_provider.dart # 课表状态管理（CRUD、周次计算）
+│   ├── schedule_provider.dart # 课表状态管理（CRUD、周次计算、多课表集切换）
 │   └── settings_provider.dart # 主题、显示设置
 ├── pages/
-│   ├── schedule_page.dart     # 主页：PageView 横向滑动 + 侧边栏
-│   ├── course_edit_page.dart  # 课程编辑表单
-│   ├── time_setting_page.dart # 时间表配置
-│   └── settings_page.dart     # 设置页（主题、导出/导入）
+│   ├── schedule_page.dart           # 主页：PageView 横向滑动 + 侧边栏 + 课表集切换
+│   ├── course_edit_page.dart        # 课程编辑表单
+│   ├── time_setting_page.dart       # 时间表配置
+│   ├── settings_page.dart           # 设置页（主题、导出/导入、Excel导入）
+│   ├── schedule_set_manage_page.dart # 课表集管理（创建/重命名/删除）
+│   └── about_page.dart              # 关于页面（版本、平台、技术栈）
 ├── widgets/
 │   ├── week_grid.dart         # 周课表网格（课程色块定位、重叠处理）
 │   ├── course_card.dart       # 课程色块卡片
@@ -43,8 +49,9 @@ lib/
 │   ├── today_courses.dart     # 今日课程列表 + 当前节次进度
 │   └── color_picker.dart      # 12 色预设选择器
 ├── services/
-│   ├── database_service.dart  # sqflite CRUD（courses + time_slots 表）
-│   └── export_service.dart    # JSON 导出/导入
+│   ├── database_service.dart  # sqflite CRUD（schedule_sets + courses + time_slots 表）
+│   ├── export_service.dart    # JSON 导出/导入
+│   └── xls_import_service.dart # Excel (.xlsx) 课表解析导入
 └── utils/
     └── constants.dart         # 颜色预设、星期映射、周次计算
 ```
