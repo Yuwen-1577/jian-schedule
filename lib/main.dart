@@ -50,9 +50,7 @@ Future<void> backgroundCallback(Uri? uri) async {
   // 过滤今日课程
   final todayCourses = courses.where((c) {
     if (c.day != today) return false;
-    if (c.weekType == 1 && currentWeek.isEven) return false;
-    if (c.weekType == 2 && currentWeek.isOdd) return false;
-    if (currentWeek < c.startWeek || currentWeek > c.endWeek) return false;
+    if (!c.isActiveInWeek(currentWeek)) return false;
     return true;
   }).toList()
     ..sort((a, b) => a.startPeriod.compareTo(b.startPeriod));

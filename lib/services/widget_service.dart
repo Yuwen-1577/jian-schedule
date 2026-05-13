@@ -7,32 +7,23 @@ import '../models/time_slot.dart';
 /// 通过 home_widget 包与原生 Android AppWidget 通信
 class WidgetService {
   /// 同步今日课程到桌面小部件
-  /// 格式化今日课程为 JSON，包含时间信息
+  /// 格式化今日课程为 JSON，包含完整课程信息
   static Future<void> syncTodayCourses(
     List<Course> courses,
     List<TimeSlot> timeSlots,
   ) async {
     final List<Map<String, dynamic>> courseData = courses.map((course) {
-      // 从时间段获取开始和结束时间
-      final startSlotIndex = course.startPeriod - 1;
-      final endSlotIndex = course.endPeriod - 1;
-
-      String startTime = '';
-      String endTime = '';
-
-      if (startSlotIndex >= 0 && startSlotIndex < timeSlots.length) {
-        startTime = timeSlots[startSlotIndex].startTime;
-      }
-      if (endSlotIndex >= 0 && endSlotIndex < timeSlots.length) {
-        endTime = timeSlots[endSlotIndex].endTime;
-      }
-
       return {
+        'id': course.id.hashCode,  // 使用hashCode作为int id
         'name': course.name,
         'room': course.room,
         'teacher': course.teacher,
-        'startTime': startTime,
-        'endTime': endTime,
+        'day': course.day,
+        'startPeriod': course.startPeriod,
+        'duration': course.duration,
+        'startWeek': course.startWeek,
+        'endWeek': course.endWeek,
+        'weekType': course.weekType,
         'colorValue': course.colorValue,
       };
     }).toList();

@@ -231,15 +231,20 @@ class ScheduleProvider extends ChangeNotifier {
   }
 
   // 同步桌面小部件数据
-  void _syncWidgetData() {
-    // 获取今日课程
-    final todayCourses = getTodayCourses();
-    WidgetService.syncTodayCourses(todayCourses, _timeSlots);
+  Future<void> _syncWidgetData() async {
+    try {
+      // 获取今日课程
+      final todayCourses = getTodayCourses();
+      await WidgetService.syncTodayCourses(todayCourses, _timeSlots);
 
-    // 同步周课表网格
-    WidgetService.syncWeekGrid(_courses, _currentWeek);
+      // 同步周课表网格
+      await WidgetService.syncWeekGrid(_courses, _currentWeek);
 
-    // 更新所有小部件
-    WidgetService.updateAll();
+      // 更新所有小部件
+      await WidgetService.updateAll();
+    } catch (e) {
+      // Widget同步失败不影响主功能
+      debugPrint('Widget同步失败: $e');
+    }
   }
 }
