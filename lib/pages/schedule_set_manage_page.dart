@@ -64,65 +64,73 @@ class ScheduleSetManagePage extends StatelessWidget {
 
   void _createSet(BuildContext context, ScheduleProvider provider) async {
     final ctrl = TextEditingController(text: '未命名课表集${provider.scheduleSets.length + 1}');
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('新建课表集'),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: '课表集名称',
-            border: OutlineInputBorder(),
+    try {
+      final result = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('新建课表集'),
+          content: TextField(
+            controller: ctrl,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: '课表集名称',
+              border: OutlineInputBorder(),
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('创建'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('创建'),
-          ),
-        ],
-      ),
-    );
-    if (result == true && ctrl.text.trim().isNotEmpty) {
-      final newSet = await provider.createSet(ctrl.text.trim());
-      await provider.switchSet(newSet.id);
+      );
+      if (result == true && ctrl.text.trim().isNotEmpty) {
+        final newSet = await provider.createSet(ctrl.text.trim());
+        await provider.switchSet(newSet.id);
+      }
+    } finally {
+      ctrl.dispose();
     }
   }
 
   void _renameSet(
       BuildContext context, ScheduleProvider provider, ScheduleSet set) async {
     final ctrl = TextEditingController(text: set.name);
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('重命名课表集'),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: '课表集名称',
-            border: OutlineInputBorder(),
+    try {
+      final result = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('重命名课表集'),
+          content: TextField(
+            controller: ctrl,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: '课表集名称',
+              border: OutlineInputBorder(),
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('确定'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('确定'),
-          ),
-        ],
-      ),
-    );
-    if (result == true && ctrl.text.trim().isNotEmpty) {
-      await provider.renameSet(set.id, ctrl.text.trim());
+      );
+      if (result == true && ctrl.text.trim().isNotEmpty) {
+        await provider.renameSet(set.id, ctrl.text.trim());
+      }
+    } finally {
+      ctrl.dispose();
     }
   }
 

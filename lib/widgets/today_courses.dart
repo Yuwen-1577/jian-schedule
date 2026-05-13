@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/course.dart';
@@ -151,12 +152,33 @@ class _TodayCourseItem extends StatelessWidget {
   }
 }
 
-class _CurrentTimeIndicator extends StatelessWidget {
+class _CurrentTimeIndicator extends StatefulWidget {
   const _CurrentTimeIndicator();
 
   @override
+  State<_CurrentTimeIndicator> createState() => _CurrentTimeIndicatorState();
+}
+
+class _CurrentTimeIndicatorState extends State<_CurrentTimeIndicator> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final provider = context.read<ScheduleProvider>();
+    final provider = context.watch<ScheduleProvider>();
     final timeSlots = provider.timeSlots;
     final now = TimeOfDay.now();
     final currentMinutes = now.hour * 60 + now.minute;
@@ -184,8 +206,14 @@ class _CurrentTimeIndicator extends StatelessWidget {
     String status;
     IconData icon;
     if (currentPeriod == null) {
-      status = '今日课程已结束';
-      icon = Icons.check_circle_outline;
+      if (timeSlots.isNotEmpty &&
+          currentMinutes < _parseMinutes(timeSlots.first.startTime)) {
+        status = '课程尚未开始';
+        icon = Icons.hourglass_empty;
+      } else {
+        status = '今日课程已结束';
+        icon = Icons.check_circle_outline;
+      }
     } else if (currentPeriod == -1) {
       status = '课间休息';
       icon = Icons.free_breakfast;

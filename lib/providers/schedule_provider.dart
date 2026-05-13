@@ -18,12 +18,12 @@ class ScheduleProvider extends ChangeNotifier {
   String _activeSetId = 'default';
 
   // Getters
-  List<Course> get courses => _courses;
-  List<TimeSlot> get timeSlots => _timeSlots;
+  List<Course> get courses => List.unmodifiable(_courses);
+  List<TimeSlot> get timeSlots => List.unmodifiable(_timeSlots);
   int get currentWeek => _currentWeek;
   int get maxPeriod => _maxPeriod;
   DateTime get semesterStart => _semesterStart;
-  List<ScheduleSet> get scheduleSets => _scheduleSets;
+  List<ScheduleSet> get scheduleSets => List.unmodifiable(_scheduleSets);
   String get activeSetId => _activeSetId;
 
   ScheduleSet? get activeSet {
@@ -61,8 +61,13 @@ class ScheduleProvider extends ChangeNotifier {
   }
 
   // 设置学期开始日期
-  void setSemesterStart(DateTime date) {
+  Future<void> setSemesterStart(DateTime date) async {
     _semesterStart = date;
+    final set = activeSet;
+    if (set != null) {
+      set.semesterStart = date;
+      await _db.updateScheduleSet(set);
+    }
     recalculateWeek();
   }
 
@@ -132,11 +137,12 @@ class ScheduleProvider extends ChangeNotifier {
     if (_scheduleSets.length <= 1) return; // 不能删除最后一个
     await _db.deleteScheduleSet(id);
     _scheduleSets.removeWhere((s) => s.id == id);
-    // 如果删除的是当前活动集，切换到第一个
+    // 如果删除的是当前活动集，切换到第一个（switchSet 内部已 notifyListeners）
     if (_activeSetId == id && _scheduleSets.isNotEmpty) {
       await switchSet(_scheduleSets.first.id);
+    } else {
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   // 添加课程
@@ -154,6 +160,15 @@ class ScheduleProvider extends ChangeNotifier {
     if (index != -1) {
       _courses[index] = course;
     }
+    notifyListeners();
+  }
+
+  // 清空当前课表集所有课程
+  Future<void> clearAllCourses() async {
+    for (final course in _courses) {
+      await _db.deleteCourse(course.id);
+    }
+    _courses.clear();
     notifyListeners();
   }
 

@@ -130,11 +130,13 @@ class DatabaseService {
   }
 
   Future<void> deleteScheduleSet(String id) async {
-    final db = await database;
-    // 先删除该集合下的所有课程
-    await db.delete('courses', where: 'scheduleSetId = ?', whereArgs: [id]);
-    // 再删除集合本身
-    await db.delete('schedule_sets', where: 'id = ?', whereArgs: [id]);
+    try {
+      final db = await database;
+      await db.delete('courses', where: 'scheduleSetId = ?', whereArgs: [id]);
+      await db.delete('schedule_sets', where: 'id = ?', whereArgs: [id]);
+    } on DatabaseException catch (e) {
+      throw Exception('删除课表集失败: $e');
+    }
   }
 
   // ============ 课程 CRUD ============
@@ -166,14 +168,22 @@ class DatabaseService {
   }
 
   Future<void> updateCourse(Course course) async {
-    final db = await database;
-    await db.update('courses', course.toMap(),
-        where: 'id = ?', whereArgs: [course.id]);
+    try {
+      final db = await database;
+      await db.update('courses', course.toMap(),
+          where: 'id = ?', whereArgs: [course.id]);
+    } on DatabaseException catch (e) {
+      throw Exception('更新课程失败: $e');
+    }
   }
 
   Future<void> deleteCourse(String id) async {
-    final db = await database;
-    await db.delete('courses', where: 'id = ?', whereArgs: [id]);
+    try {
+      final db = await database;
+      await db.delete('courses', where: 'id = ?', whereArgs: [id]);
+    } on DatabaseException catch (e) {
+      throw Exception('删除课程失败: $e');
+    }
   }
 
   Future<void> deleteAllCourses() async {
@@ -199,10 +209,14 @@ class DatabaseService {
   // ============ 时间表 CRUD ============
 
   Future<List<TimeSlot>> getTimeSlots() async {
-    final db = await database;
-    final maps = await db.query('time_slots', orderBy: 'period ASC');
-    if (maps.isEmpty) return List.from(defaultTimeSlots);
-    return maps.map((map) => TimeSlot.fromMap(map)).toList();
+    try {
+      final db = await database;
+      final maps = await db.query('time_slots', orderBy: 'period ASC');
+      if (maps.isEmpty) return List.from(defaultTimeSlots);
+      return maps.map((map) => TimeSlot.fromMap(map)).toList();
+    } on DatabaseException catch (e) {
+      throw Exception('获取时间表失败: $e');
+    }
   }
 
   Future<void> updateTimeSlot(TimeSlot slot) async {
@@ -236,57 +250,75 @@ class DatabaseService {
   }
 
   Future<Map<String, dynamic>> importFromJson(String jsonStr) async {
-    final data = json.decode(jsonStr) as Map<String, dynamic>;
-    final version = data['version'] as String? ?? '1.0';
+    try {
+      final data = json.decode(jsonStr) as Map<String, dynamic>;
+      final version = data['version'] as String? ?? '1.0';
 
-    final coursesList = (data['courses'] as List)
-        .map((e) => Course.fromMap(e as Map<String, dynamic>))
-        .toList();
-    final timeSlotsList = (data['timeSlots'] as List)
-        .map((e) => TimeSlot.fromMap(e as Map<String, dynamic>))
-        .toList();
-
-    // 解析课表集（v2.0 格式）
-    List<ScheduleSet> scheduleSets = [];
-    if (data['scheduleSets'] != null) {
-      scheduleSets = (data['scheduleSets'] as List)
-          .map((e) => ScheduleSet.fromMap(e as Map<String, dynamic>))
+      final coursesList = (data['courses'] as List)
+          .map((e) => Course.fromMap(e as Map<String, dynamic>))
           .toList();
-    }
+      final timeSlotsList = (data['timeSlots'] as List)
+          .map((e) => TimeSlot.fromMap(e as Map<String, dynamic>))
+          .toList();
 
-    await deleteAllCourses();
-
-    // 如果没有课表集信息（v1.0 格式），创建默认集
-    if (scheduleSets.isEmpty) {
-      final defaultSet = ScheduleSet(
-        id: 'default',
-        name: '我的课表',
-        semesterStart: DateTime(2025, 2, 17),
-      );
-      await insertScheduleSet(defaultSet);
-      // 所有课程归入默认集
-      for (final course in coursesList) {
-        course.scheduleSetId = 'default';
+      List<ScheduleSet> scheduleSets = [];
+      if (data['scheduleSets'] != null) {
+        scheduleSets = (data['scheduleSets'] as List)
+            .map((e) => ScheduleSet.fromMap(e as Map<String, dynamic>))
+            .toList();
       }
-    } else {
-      // v2.0 格式：先清空再导入课表集
+
       final db = await database;
-      await db.delete('schedule_sets');
-      for (final set in scheduleSets) {
-        await insertScheduleSet(set);
-      }
-    }
+      await db.transaction((txn) async {
+        // 清空旧数据
+        await txn.delete('courses');
+        await txn.delete('schedule_sets');
 
-    await insertCourses(coursesList);
-    if (timeSlotsList.isNotEmpty) {
-      await saveTimeSlots(timeSlotsList);
-    }
+        if (scheduleSets.isEmpty) {
+          // v1.0 格式：创建默认集
+          final defaultSet = ScheduleSet(
+            id: 'default',
+            name: '我的课表',
+            semesterStart: DateTime(2025, 2, 17),
+          );
+          await txn.insert('schedule_sets', defaultSet.toMap(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
+          for (final course in coursesList) {
+            course.scheduleSetId = 'default';
+          }
+        } else {
+          // v2.0 格式：导入课表集
+          for (final set in scheduleSets) {
+            await txn.insert('schedule_sets', set.toMap(),
+                conflictAlgorithm: ConflictAlgorithm.replace);
+          }
+        }
 
-    return {
-      'version': version,
-      'coursesCount': coursesList.length,
-      'timeSlotsCount': timeSlotsList.length,
-      'setsCount': scheduleSets.length,
-    };
+        // 批量插入课程
+        for (final course in coursesList) {
+          await txn.insert('courses', course.toMap(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+
+        // 导入时间表
+        if (timeSlotsList.isNotEmpty) {
+          await txn.delete('time_slots');
+          for (final slot in timeSlotsList) {
+            await txn.insert('time_slots', slot.toMap());
+          }
+        }
+      });
+
+      return {
+        'version': version,
+        'coursesCount': coursesList.length,
+        'timeSlotsCount': timeSlotsList.length,
+        'setsCount': scheduleSets.length,
+      };
+    } on FormatException catch (e) {
+      throw Exception('JSON 格式错误: $e');
+    } on DatabaseException catch (e) {
+      throw Exception('数据库导入失败: $e');
+    }
   }
 }

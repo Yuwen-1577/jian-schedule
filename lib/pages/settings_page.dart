@@ -4,7 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import '../providers/schedule_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/xls_import_service.dart';
-import '../utils/constants.dart';
+import 'about_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -144,18 +144,30 @@ class _SettingsPageState extends State<SettingsPage> {
           Card(
             child: Column(
               children: [
-                const ListTile(
-                  leading: Icon(Icons.info_outline),
+                ListTile(
+                  leading: const Icon(Icons.info_outline),
                   title: const Text('简课表'),
-                  subtitle: Text('跨平台课表管理工具'),
+                  subtitle: const Text('跨平台课表管理工具'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AboutPage()),
+                    );
+                  },
                 ),
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.code),
                   title: const Text('版本'),
-                  subtitle: const Text('v1.2.0'),
+                  subtitle: const Text('v1.2.2'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AboutPage()),
+                    );
+                  },
                 ),
               ],
             ),
@@ -187,7 +199,7 @@ class _SettingsPageState extends State<SettingsPage> {
       lastDate: DateTime(2030),
     );
     if (date != null) {
-      provider.setSemesterStart(date);
+      await provider.setSemesterStart(date);
     }
   }
 
@@ -225,49 +237,53 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void _importData(ScheduleProvider provider) async {
     final ctrl = TextEditingController();
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('导入课表数据'),
-        content: TextField(
-          controller: ctrl,
-          maxLines: 6,
-          decoration: const InputDecoration(
-            hintText: '请粘贴 JSON 数据...',
-            border: OutlineInputBorder(),
+    try {
+      await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('导入课表数据'),
+          content: TextField(
+            controller: ctrl,
+            maxLines: 6,
+            decoration: const InputDecoration(
+              hintText: '请粘贴 JSON 数据...',
+              border: OutlineInputBorder(),
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () async {
+                try {
+                  final result =
+                      await provider.importJson(ctrl.text.trim());
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx, true);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text(
+                              '导入成功: ${result['coursesCount'] ?? 0} 门课程, ${result['timeSlotsCount'] ?? 0} 个时间段')),
+                    );
+                  }
+                } catch (e) {
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(content: Text('导入失败: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('导入'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () async {
-              try {
-                final result =
-                    await provider.importJson(ctrl.text.trim());
-                if (ctx.mounted) {
-                  Navigator.pop(ctx, true);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text(
-                            '导入成功: ${result['coursesCount']} 门课程, ${result['timeSlotsCount']} 个时间段')),
-                  );
-                }
-              } catch (e) {
-                if (ctx.mounted) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(content: Text('导入失败: $e')),
-                  );
-                }
-              }
-            },
-            child: const Text('导入'),
-          ),
-        ],
-      ),
-    );
+      );
+    } finally {
+      ctrl.dispose();
+    }
   }
 
   void _clearAllData(ScheduleProvider provider) async {
@@ -291,12 +307,12 @@ class _SettingsPageState extends State<SettingsPage> {
     );
 
     if (confirmed == true) {
-      for (final course in List.from(provider.courses)) {
-        provider.deleteCourse(course.id);
+      await provider.clearAllCourses();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('所有数据已清除')),
+        );
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('所有数据已清除')),
-      );
     }
   }
 

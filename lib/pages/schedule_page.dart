@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/schedule_provider.dart';
-import '../providers/settings_provider.dart';
 import '../widgets/week_grid.dart';
 import '../widgets/today_courses.dart';
-import '../utils/constants.dart';
 import 'course_edit_page.dart';
 import 'time_setting_page.dart';
 import 'settings_page.dart';
@@ -19,17 +17,22 @@ class SchedulePage extends StatefulWidget {
 
 class _SchedulePageState extends State<SchedulePage> {
   late PageController _pageController;
+  late ScrollController _weekScrollController;
 
   @override
   void initState() {
     super.initState();
     final provider = context.read<ScheduleProvider>();
     _pageController = PageController(initialPage: provider.currentWeek - 1);
+    _weekScrollController = ScrollController(
+      initialScrollOffset: (provider.currentWeek - 1) * 48.0,
+    );
   }
 
   @override
   void dispose() {
     _pageController.dispose();
+    _weekScrollController.dispose();
     super.dispose();
   }
 
@@ -187,6 +190,7 @@ class _SchedulePageState extends State<SchedulePage> {
                             duration: const Duration(milliseconds: 200),
                             curve: Curves.easeInOut,
                           );
+                          _syncWeekScroll(currentWeek - 1);
                         }
                       : null,
                   padding: EdgeInsets.zero,
@@ -196,9 +200,7 @@ class _SchedulePageState extends State<SchedulePage> {
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: 25,
-                    controller: ScrollController(
-                      initialScrollOffset: (currentWeek - 1) * 48.0,
-                    ),
+                    controller: _weekScrollController,
                     itemBuilder: (context, index) {
                       final week = index + 1;
                       final isCurrent = week == currentWeek;
@@ -210,6 +212,7 @@ class _SchedulePageState extends State<SchedulePage> {
                             duration: const Duration(milliseconds: 200),
                             curve: Curves.easeInOut,
                           );
+                          _syncWeekScroll(week);
                         },
                         child: Container(
                           width: 42,
@@ -247,6 +250,7 @@ class _SchedulePageState extends State<SchedulePage> {
                             duration: const Duration(milliseconds: 200),
                             curve: Curves.easeInOut,
                           );
+                          _syncWeekScroll(currentWeek + 1);
                         }
                       : null,
                   padding: EdgeInsets.zero,
@@ -262,6 +266,7 @@ class _SchedulePageState extends State<SchedulePage> {
               itemCount: 25,
               onPageChanged: (index) {
                 provider.setWeek(index + 1);
+                _syncWeekScroll(index + 1);
               },
               itemBuilder: (context, index) {
                 return WeekGrid(week: index + 1);
@@ -271,5 +276,16 @@ class _SchedulePageState extends State<SchedulePage> {
         ],
       ),
     );
+  }
+
+  void _syncWeekScroll(int week) {
+    final target = (week - 1) * 48.0;
+    if (_weekScrollController.hasClients) {
+      _weekScrollController.animateTo(
+        target,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 }

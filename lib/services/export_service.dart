@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:intl/intl.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart'
     show getApplicationDocumentsDirectory;
@@ -9,24 +10,31 @@ class ExportService {
 
   // 导出到文件
   Future<String> exportToFile() async {
-    final jsonStr = await _db.exportToJson();
-    final dir = await getApplicationDocumentsDirectory();
-    final timestamp = DateTime.now()
-        .toIso8601String()
-        .replaceAll(':', '-')
-        .split('.')
-        .first;
-    final filePath = join(dir.path, 'schedule_backup_$timestamp.json');
-    final file = File(filePath);
-    await file.writeAsString(jsonStr);
-    return filePath;
+    try {
+      final jsonStr = await _db.exportToJson();
+      final dir = await getApplicationDocumentsDirectory();
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final filePath = join(dir.path, 'schedule_backup_$timestamp.json');
+      final file = File(filePath);
+      await file.writeAsString(jsonStr);
+      return filePath;
+    } on Exception catch (e) {
+      throw Exception('导出失败: $e');
+    }
   }
 
   // 从文件导入
   Future<Map<String, dynamic>> importFromFile(String filePath) async {
-    final file = File(filePath);
-    final jsonStr = await file.readAsString();
-    return await _db.importFromJson(jsonStr);
+    try {
+      final file = File(filePath);
+      if (!await file.exists()) {
+        throw Exception('文件不存在: $filePath');
+      }
+      final jsonStr = await file.readAsString();
+      return await _db.importFromJson(jsonStr);
+    } on Exception catch (e) {
+      throw Exception('导入失败: $e');
+    }
   }
 
   // 获取导出 JSON 字符串 (用于分享)
