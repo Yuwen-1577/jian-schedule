@@ -6,15 +6,17 @@
 
 - 周视图课表，横向滑动切换 1-25 周
 - 单双周自动过滤、今日周几高亮
-- 添加/编辑/删除课程（名称、教室、教师、时间、颜色）
+- 添加/编辑/删除课程（名称、教室、教师、时间、颜色、提醒）
 - 多课表集管理（创建/切换/重命名/删除）
-- Excel (.xlsx) 课表文件导入
+- Excel (.xlsx) 课表文件导入（智能表头检测、合并单元格、单双周识别）
 - 自定义上课时间表
 - 今日课程侧边栏 + 当前节次进度指示
-- 浅色/深色主题
+- 课程提醒通知（5 分钟 / 10 分钟 / 15 分钟 / 30 分钟 / 1 小时）
+- Material 3 主题 + 10 种预设主题色 + 自定义颜色
+- 浅色 / 深色 / 跟随系统主题
 - JSON 数据导出/导入备份
 - 学期起始日设置（自动计算当前教学周）
-- 关于页面（版本信息、支持平台）
+- Android 桌面小部件（今日课程 / 课程列表 / 周课表网格）
 
 ## 技术栈
 
@@ -22,6 +24,8 @@
 - Provider 状态管理
 - sqflite 本地数据库
 - shared_preferences 配置存储
+- flutter_local_notifications 课程提醒
+- home_widget 桌面小部件
 
 ## 项目结构
 
@@ -29,7 +33,7 @@
 lib/
 ├── main.dart                  # 入口，MultiProvider 配置
 ├── models/
-│   ├── course.dart            # 课程模型（单双周、起止周、节次、颜色、所属课表集）
+│   ├── course.dart            # 课程模型（单双周、起止周、节次、颜色、提醒）
 │   ├── schedule_set.dart      # 课表集模型（名称、学期开始日期）
 │   └── time_slot.dart         # 上课时间段模型
 ├── providers/
@@ -37,9 +41,9 @@ lib/
 │   └── settings_provider.dart # 主题、显示设置
 ├── pages/
 │   ├── schedule_page.dart           # 主页：PageView 横向滑动 + 侧边栏 + 课表集切换
-│   ├── course_edit_page.dart        # 课程编辑表单
+│   ├── course_edit_page.dart        # 课程编辑表单（含提醒时间选择）
 │   ├── time_setting_page.dart       # 时间表配置
-│   ├── settings_page.dart           # 设置页（主题、导出/导入、Excel导入）
+│   ├── settings_page.dart           # 设置页（主题、导出/导入、Excel导入、通知）
 │   ├── schedule_set_manage_page.dart # 课表集管理（创建/重命名/删除）
 │   └── about_page.dart              # 关于页面（版本、平台、技术栈）
 ├── widgets/
@@ -49,7 +53,9 @@ lib/
 │   ├── today_courses.dart     # 今日课程列表 + 当前节次进度
 │   └── color_picker.dart      # 12 色预设选择器
 ├── services/
-│   ├── database_service.dart  # sqflite CRUD（schedule_sets + courses + time_slots 表）
+│   ├── database_service.dart  # sqflite CRUD + JSON 导出/导入
+│   ├── notification_service.dart # 课程提醒通知调度
+│   ├── widget_service.dart    # 桌面小部件数据同步
 │   └── xls_import_service.dart # Excel (.xlsx) 课表解析导入
 └── utils/
     └── constants.dart         # 颜色预设、星期映射、周次计算
@@ -83,6 +89,40 @@ adb install build/app/outputs/flutter-apk/app-release.apk
 ## 下载
 
 从 [Releases](../../releases) 页面下载最新 APK。
+
+## 更新日志
+
+### v2.0.0 (2026-06-12)
+
+- 新增课程提醒通知，支持 5 分钟~1 小时提前提醒，每门课程独立设置
+- 新增 Material 3 种子色主题系统，10 种预设 + 自定义调色盘
+- Excel 导入增强：智能表头检测、合并单元格处理、单双周自动分析
+- 桌面小部件 Kotlin 端重构，稳定性提升
+- 版本号改为动态读取，消除硬编码
+- 修复通知 ID 跨平台一致性问题
+- 修复 Excel 导入课程 ID 为空导致的数据冲突
+
+### v1.3.1 (2025-05-13)
+
+- 修复桌面小部件数据同步问题
+
+### v1.3.0 (2025-05-13)
+
+- 新增 Android 桌面小部件（今日课程 / 课程列表 / 周课表网格）
+
+### v1.2.0 (2025-05-03)
+
+- 新增 Excel (.xlsx) 课表导入
+- 新增多课表集管理
+
+### v1.1.0 (2025-05-01)
+
+- 课程卡片点击进入编辑页
+- 修复设置页版本号显示
+
+### v1.0.0 (2025-04-30)
+
+- 首次发布：周课表、课程 CRUD、深色主题、JSON 备份
 
 ## 开源协议
 
