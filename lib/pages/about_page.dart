@@ -111,7 +111,7 @@ class AboutPage extends StatelessWidget {
               // 版权信息
               Center(
                 child: Text(
-                  'Copyright © 2025-2026 简课表',
+                  'Copyright © 2026 简课表',
                   style: TextStyle(
                     fontSize: 12,
                     color: isDark ? Colors.grey[500] : Colors.grey[500],
