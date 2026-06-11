@@ -1,9 +1,17 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:intl/intl.dart';
+import 'package:path/path.dart' as p;
 import '../providers/schedule_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/xls_import_service.dart';
+import '../utils/constants.dart';
 import 'about_page.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -66,6 +74,41 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 20),
 
+          // === 通知设置 ===
+          _buildSectionTitle('通知设置'),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.notifications_outlined),
+                  title: const Text('课程提醒'),
+                  subtitle: const Text('在每门课程的编辑页面中设置提前提醒时间'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('课程提醒说明'),
+                        content: const Text(
+                          '每门课程可独立设置提醒时间（5分钟~1小时前）。\n\n'
+                          '提醒会在每次打开应用时自动调度当前周的通知。\n\n'
+                          '在课程编辑页面的"上课提醒"选项中设置。',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('知道了'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
           // === 主题设置 ===
           _buildSectionTitle('主题设置'),
           Card(
@@ -93,6 +136,76 @@ class _SettingsPageState extends State<SettingsPage> {
                   onChanged: (v) => settings.setThemeMode(v!),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // === 主题色 ===
+          _buildSectionTitle('主题色'),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      for (final color in seedColors)
+                        GestureDetector(
+                          onTap: () => settings.setSeedColor(color),
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                              border: settings.seedColor.value == color.value
+                                  ? Border.all(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface,
+                                      width: 3)
+                                  : null,
+                              boxShadow: [
+                                if (settings.seedColor.value == color.value)
+                                  BoxShadow(
+                                    color: color.withValues(alpha: 0.4),
+                                    blurRadius: 8,
+                                  ),
+                              ],
+                            ),
+                            child: settings.seedColor.value == color.value
+                                ? const Icon(Icons.check,
+                                    color: Colors.white, size: 20)
+                                : null,
+                          ),
+                        ),
+                      // 自定义颜色按钮
+                      GestureDetector(
+                        onTap: () => _pickCustomSeedColor(settings),
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .outline,
+                                width: 1.5),
+                          ),
+                          child: Icon(Icons.palette,
+                              size: 20,
+                              color:
+                                  Theme.of(context).colorScheme.onSurface),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 20),
@@ -141,6 +254,22 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 const Divider(height: 1),
                 ListTile(
+                  leading: Icon(Icons.camera_alt_outlined,
+                      color: Colors.grey[500]),
+                  title: Text('从截图导入',
+                      style: TextStyle(color: Colors.grey[500])),
+                  subtitle: const Text('即将推出，敬请期待'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('截图导入功能正在开发中，敬请期待！'),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(height: 1),
+                ListTile(
                   leading:
                       const Icon(Icons.delete_outline, color: Colors.red),
                   title: const Text('清除所有数据',
@@ -174,7 +303,13 @@ class _SettingsPageState extends State<SettingsPage> {
                 ListTile(
                   leading: const Icon(Icons.code),
                   title: const Text('版本'),
-                  subtitle: const Text('v1.3.0'),
+                  subtitle: FutureBuilder<PackageInfo>(
+                    future: PackageInfo.fromPlatform(),
+                    builder: (context, snapshot) {
+                      final version = snapshot.data?.version ?? '...';
+                      return Text('v$version');
+                    },
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     Navigator.push(
@@ -205,12 +340,43 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  void _pickCustomSeedColor(SettingsProvider settings) {
+    Color pickerColor = settings.seedColor;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('选择主题色'),
+        content: SingleChildScrollView(
+          child: ColorPicker(
+            pickerColor: pickerColor,
+            onColorChanged: (color) => pickerColor = color,
+            enableAlpha: false,
+            labelTypes: const [],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              settings.setSeedColor(pickerColor);
+              Navigator.pop(ctx);
+            },
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _pickSemesterStart(ScheduleProvider provider) async {
     final date = await showDatePicker(
       context: context,
       initialDate: provider.semesterStart,
       firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
+      lastDate: DateTime(2035),
     );
     if (date != null) {
       await provider.setSemesterStart(date);
@@ -220,28 +386,18 @@ class _SettingsPageState extends State<SettingsPage> {
   void _exportData(ScheduleProvider provider) async {
     try {
       final jsonStr = await provider.exportJson();
+      if (!mounted) return;
+
+      // 保存到文件
+      final dir = await getApplicationDocumentsDirectory();
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final filePath = p.join(dir.path, 'schedule_backup_$timestamp.json');
+      final file = File(filePath);
+      await file.writeAsString(jsonStr);
+
       if (mounted) {
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('导出成功'),
-            content: SizedBox(
-              height: 200,
-              width: double.maxFinite,
-              child: SingleChildScrollView(
-                child: SelectableText(
-                  jsonStr,
-                  style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('关闭'),
-              ),
-            ],
-          ),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('已导出到: $filePath')),
         );
       }
     } catch (e) {
@@ -250,19 +406,118 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _importData(ScheduleProvider provider) async {
-    final ctrl = TextEditingController();
     try {
-      await showDialog<bool>(
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+      if (result == null || result.files.isEmpty) return;
+
+      final filePath = result.files.first.path;
+      if (filePath == null) return;
+
+      if (!mounted) return;
+
+      // 读取文件
+      final file = File(filePath);
+      if (!await file.exists()) {
+        _showError('文件不存在');
+        return;
+      }
+      final jsonStr = await file.readAsString();
+
+      // 预览：解析 JSON 展示信息
+      final confirmed = await _showImportPreview(jsonStr);
+      if (confirmed != true) return;
+
+      if (!mounted) return;
+
+      // 执行导入
+      final importResult = await provider.importJson(jsonStr);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(
+                  '导入成功: ${importResult['coursesCount'] ?? 0} 门课程, '
+                  '${importResult['setsCount'] ?? 0} 个课表集')),
+        );
+      }
+    } catch (e) {
+      _showError('导入失败: $e');
+    }
+  }
+
+  /// 显示导入预览弹窗
+  Future<bool?> _showImportPreview(String jsonStr) async {
+    try {
+      final decoded = json.decode(jsonStr) as Map<String, dynamic>;
+      final version = decoded['version'] ?? '1.0';
+      final courses = decoded['courses'] as List? ?? [];
+      final sets = decoded['scheduleSets'] as List? ?? [];
+      final coursesCount = courses.length;
+      final setsCount = sets.length;
+      // 提取前 5 门课程名
+      final courseNames = courses
+          .take(5)
+          .map((c) => (c as Map<String, dynamic>)['name']?.toString() ?? '')
+          .where((n) => n.isNotEmpty)
+          .toList();
+
+      if (!mounted) return false;
+
+      return showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('导入课表数据'),
-          content: TextField(
-            controller: ctrl,
-            maxLines: 6,
-            decoration: const InputDecoration(
-              hintText: '请粘贴 JSON 数据...',
-              border: OutlineInputBorder(),
-            ),
+          title: const Text('导入预览'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('版本: $version'),
+              const SizedBox(height: 4),
+              Text('课程数量: $coursesCount 门'),
+              Text('课表集: $setsCount 个'),
+              Text('时间段: ${(decoded['timeSlots'] as List?)?.length ?? 0} 个'),
+              if (courseNames.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text('课程预览:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                for (final name in courseNames)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8, top: 2),
+                    child: Text('• $name'),
+                  ),
+                if (courses.length > 5)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8, top: 2),
+                    child: Text('... 等共 ${courses.length} 门',
+                        style: TextStyle(
+                            color: Colors.grey[600], fontSize: 12)),
+                  ),
+              ],
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber, size: 16, color: Colors.orange),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '导入将替换当前所有数据',
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.orange[800]),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           actions: [
             TextButton(
@@ -270,33 +525,15 @@ class _SettingsPageState extends State<SettingsPage> {
               child: const Text('取消'),
             ),
             TextButton(
-              onPressed: () async {
-                try {
-                  final result =
-                      await provider.importJson(ctrl.text.trim());
-                  if (ctx.mounted) {
-                    Navigator.pop(ctx, true);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text(
-                              '导入成功: ${result['coursesCount'] ?? 0} 门课程, ${result['timeSlotsCount'] ?? 0} 个时间段')),
-                    );
-                  }
-                } catch (e) {
-                  if (ctx.mounted) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      SnackBar(content: Text('导入失败: $e')),
-                    );
-                  }
-                }
-              },
-              child: const Text('导入'),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('确认导入'),
             ),
           ],
         ),
       );
-    } finally {
-      ctrl.dispose();
+    } catch (e) {
+      _showError('JSON 格式错误，无法预览: $e');
+      return false;
     }
   }
 
@@ -396,6 +633,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _showError(String msg) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(msg)));
   }

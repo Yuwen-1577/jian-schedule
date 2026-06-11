@@ -14,6 +14,7 @@ class Course {
   int colorValue; // 课程颜色 ARGB
   String note;
   String scheduleSetId; // 所属课表集 ID
+  int reminderMinutesBefore; // 提前提醒分钟数，0=不提醒
 
   Course({
     required this.id,
@@ -29,6 +30,7 @@ class Course {
     this.colorValue = 0xFF4CAF50,
     this.note = '',
     this.scheduleSetId = '',
+    this.reminderMinutesBefore = 15,
   });
 
   // 判断该课程在指定周次是否上课
@@ -57,13 +59,14 @@ class Course {
       'colorValue': colorValue,
       'note': note,
       'scheduleSetId': scheduleSetId,
+      'reminderMinutesBefore': reminderMinutesBefore,
     };
   }
 
   factory Course.fromMap(Map<String, dynamic> map) {
     return Course(
-      id: map['id'] as String,
-      name: map['name'] as String,
+      id: map['id'] as String? ?? '',
+      name: map['name'] as String? ?? '',
       room: map['room'] as String? ?? '',
       teacher: map['teacher'] as String? ?? '',
       day: map['day'] as int,
@@ -75,6 +78,7 @@ class Course {
       colorValue: map['colorValue'] as int? ?? 0xFF4CAF50,
       note: map['note'] as String? ?? '',
       scheduleSetId: map['scheduleSetId'] as String? ?? '',
+      reminderMinutesBefore: map['reminderMinutesBefore'] as int? ?? 15,
     );
   }
 
@@ -97,6 +101,7 @@ class Course {
     int? colorValue,
     String? note,
     String? scheduleSetId,
+    int? reminderMinutesBefore,
   }) {
     return Course(
       id: id ?? this.id,
@@ -112,6 +117,7 @@ class Course {
       colorValue: colorValue ?? this.colorValue,
       note: note ?? this.note,
       scheduleSetId: scheduleSetId ?? this.scheduleSetId,
+      reminderMinutesBefore: reminderMinutesBefore ?? this.reminderMinutesBefore,
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:uuid/uuid.dart';
+import '../utils/constants.dart';
 
 class ScheduleSet {
   final String id;
@@ -24,9 +25,9 @@ class ScheduleSet {
 
   factory ScheduleSet.fromMap(Map<String, dynamic> map) {
     return ScheduleSet(
-      id: map['id'] as String,
-      name: map['name'] as String,
-      semesterStart: DateTime.parse(map['semesterStart'] as String),
+      id: map['id'] as String? ?? '',
+      name: map['name'] as String? ?? '',
+      semesterStart: DateTime.tryParse(map['semesterStart'] as String? ?? '') ?? defaultSemesterStart,
       sortOrder: map['sortOrder'] as int? ?? 0,
     );
   }

@@ -21,9 +21,9 @@ class TimeSlot {
 
   factory TimeSlot.fromMap(Map<String, dynamic> map) {
     return TimeSlot(
-      period: map['period'] as int,
-      startTime: map['startTime'] as String,
-      endTime: map['endTime'] as String,
+      period: map['period'] as int? ?? 1,
+      startTime: map['startTime'] as String? ?? '08:00',
+      endTime: map['endTime'] as String? ?? '08:45',
     );
   }
 

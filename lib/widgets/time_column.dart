@@ -40,7 +40,7 @@ class TimeColumn extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  slot.startTime.substring(0, 5),
+                  slot.startTime,
                   style: TextStyle(
                     fontSize: 9,
                     color: textColor,
@@ -48,10 +48,10 @@ class TimeColumn extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  slot.endTime.substring(0, 5),
+                  slot.endTime,
                   style: TextStyle(
                     fontSize: 8,
-                    color: textColor?.withAlpha(150),
+                    color: textColor?.withValues(alpha: 0.59),
                     height: 1.1,
                   ),
                 ),

@@ -1,8 +1,11 @@
 import 'dart:io';
 import 'package:excel/excel.dart';
+import 'package:uuid/uuid.dart';
 import '../models/course.dart';
 import '../utils/constants.dart';
 
+/// Excel 课表导入服务
+/// 支持多种格式：标准周视图、分段视图、单行单节、合并单元格等
 class XlsImportService {
   /// 解析 xlsx 文件，返回课程列表
   static Future<List<Course>> parseFile(String filePath) async {
@@ -23,17 +26,182 @@ class XlsImportService {
       throw Exception('工作表数据不足');
     }
 
-    // 构建二维字符串网格
+    // 1. 构建二维字符串网格（处理合并单元格）
+    final grid = _buildGridWithMerge(sheet, rows);
+
+    // 2. 智能表头检测
+    final headerInfo = _detectHeader(grid);
+    if (headerInfo == null) {
+      throw Exception('未找到课表表头（星期一~星期日）');
+    }
+
+    final headerRow = headerInfo['headerRow']!;
+    final dayColMap = headerInfo['dayColMap'] as Map<int, int>;
+    final timeSlotColumns = headerInfo['timeSlotColumns'] as List<int>;
+
+    // 3. 确定数据范围
+    final dataRange = _detectDataRange(grid, headerRow, dayColMap);
+    final dataStartRow = dataRange['start']!;
+    final dataEndRow = dataRange['end']!;
+
+    // 4. 逐行解析课程
+    final courses = <Course>[];
+    final colorMap = <String, int>{};
+    int colorIndex = 0;
+
+    for (int r = dataStartRow; r < dataEndRow; r++) {
+      // 跳过分段行（上午/下午/晚上）
+      final firstCell = grid[r].isNotEmpty ? grid[r][0].trim() : '';
+      if (_isSegmentHeader(firstCell)) {
+        continue;
+      }
+
+      // 检测当前行的节次
+      final startPeriod = _calculateStartPeriod(
+        grid,
+        r,
+        dataStartRow,
+        timeSlotColumns,
+      );
+
+      // 解析每一天的课程
+      for (final entry in dayColMap.entries) {
+        final day = entry.key;
+        final col = entry.value;
+
+        if (col >= grid[r].length) continue;
+        final cellText = grid[r][col].trim();
+        if (cellText.isEmpty) continue;
+
+        final dayCourses = _parseCell(
+          cellText,
+          day,
+          startPeriod,
+          colorMap,
+          colorIndex,
+        );
+        courses.addAll(dayCourses);
+        colorIndex += dayCourses.length;
+      }
+    }
+
+    // 5. 合并同名课程
+    final mergedCourses = _mergeCourses(courses);
+
+    // 6. 分配颜色
+    const uuidGen = Uuid();
+    final result = <Course>[];
+    int finalColorIndex = 0;
+    for (final course in mergedCourses) {
+      result.add(Course(
+        id: uuidGen.v4(),
+        name: course.name,
+        room: course.room,
+        teacher: course.teacher,
+        day: course.day,
+        startPeriod: course.startPeriod,
+        duration: course.duration,
+        startWeek: course.startWeek,
+        endWeek: course.endWeek,
+        weekType: course.weekType,
+        colorValue: _getCourseColor(course.name, colorMap, finalColorIndex),
+      ));
+      finalColorIndex++;
+    }
+
+    return result;
+  }
+
+  /// 构建二维字符串网格（处理合并单元格）
+  static List<List<String>> _buildGridWithMerge(
+    Sheet sheet,
+    List<List<dynamic>> rows,
+  ) {
     final grid = <List<String>>[];
-    for (final row in rows) {
+
+    for (int r = 0; r < rows.length; r++) {
       final cells = <String>[];
-      for (final cell in row) {
-        cells.add(_cellToString(cell));
+      for (int c = 0; c < rows[r].length; c++) {
+        // 检查是否在合并单元格区域内
+        final mergeValue = _getMergedCellInfo(sheet, r, c);
+        if (mergeValue != null) {
+          cells.add(mergeValue);
+        } else {
+          cells.add(_cellToString(rows[r][c]));
+        }
       }
       grid.add(cells);
     }
 
-    // 1. 找到所有包含星期关键词的单元格位置
+    return grid;
+  }
+
+  /// 获取合并单元格的值
+  /// 注意: excel 4.0.6 可能不直接暴露 mergedCells API
+  /// 使用安全的降级方案
+  static String? _getMergedCellInfo(Sheet sheet, int row, int col) {
+    // 只在单元格为空时才尝试搜索
+    if (col < sheet.rows[row].length &&
+        _cellToString(sheet.rows[row][col]).isNotEmpty) {
+      return null; // 单元格有值，不需要处理
+    }
+
+    try {
+      // excel 4.0.6 的合并单元格处理
+      // 由于 API 限制，这里采用简化处理:
+      // 如果单元格为空但不是边缘，可能是合并单元格的一部分
+      // 尝试从左边或上边查找值
+
+      // 向左搜索（同一行）
+      for (int c = col - 1; c >= 0; c--) {
+        if (c < sheet.rows[row].length) {
+          final value = _cellToString(sheet.rows[row][c]);
+          if (value.isNotEmpty) {
+            // 检查这个值是否跨越多列（简单的启发式）
+            // 如果右边的单元格都为空，可能是合并单元格
+            bool allRightEmpty = true;
+            for (int nc = c + 1; nc <= col && nc < sheet.rows[row].length; nc++) {
+              if (_cellToString(sheet.rows[row][nc]).isNotEmpty) {
+                allRightEmpty = false;
+                break;
+              }
+            }
+            if (allRightEmpty) {
+              return value;
+            }
+          }
+        }
+      }
+
+      // 向上搜索（同一列）
+      for (int r = row - 1; r >= 0; r--) {
+        if (col < sheet.rows[r].length) {
+          final value = _cellToString(sheet.rows[r][col]);
+          if (value.isNotEmpty) {
+            // 检查这个值是否跨越多行
+            bool allBelowEmpty = true;
+            for (int nr = r + 1; nr <= row && nr < sheet.rows.length; nr++) {
+              if (col < sheet.rows[nr].length &&
+                  _cellToString(sheet.rows[nr][col]).isNotEmpty) {
+                allBelowEmpty = false;
+                break;
+              }
+            }
+            if (allBelowEmpty) {
+              return value;
+            }
+          }
+        }
+      }
+    } catch (_) {
+      // 忽略任何错误
+    }
+    return null;
+  }
+
+  /// 智能表头检测
+  static Map<String, dynamic>? _detectHeader(List<List<String>> grid) {
+    // 找到所有包含星期关键词的单元格位置
     final weekdayPositions = <_WeekdayPos>[];
     for (int r = 0; r < grid.length; r++) {
       for (int c = 0; c < grid[r].length; c++) {
@@ -44,11 +212,8 @@ class XlsImportService {
       }
     }
 
-    if (weekdayPositions.isEmpty) {
-      throw Exception('未找到课表表头（星期一~星期日）');
-    }
+    if (weekdayPositions.isEmpty) return null;
 
-    // 2. 确定表头行和列映射
     // 按行分组，找出行数最多的那一行作为表头行
     final rowGroups = <int, List<_WeekdayPos>>{};
     for (final pos in weekdayPositions) {
@@ -62,19 +227,108 @@ class XlsImportService {
         .key;
 
     // 构建 weekday -> column 的映射
-    final dayColMap = <int, int>{}; // weekday(1-7) -> column index
+    final dayColMap = <int, int>{};
     for (final pos in rowGroups[headerRow]!) {
-      // 如果同一星期有多个列，取第一个
       dayColMap.putIfAbsent(pos.weekday, () => pos.col);
     }
 
-    // 3. 确定数据起始行和结束行
-    // 数据从表头行的下一行开始
-    int dataStartRow = headerRow + 1;
+    // 检测时间列（左侧列包含节次标注）
+    final timeSlotColumns = <int>[];
+    if (dayColMap.isNotEmpty) {
+      final minCol = dayColMap.values.reduce((a, b) => a < b ? a : b);
+      for (int c = 0; c < minCol; c++) {
+        // 检查这一列是否有节次标注
+        bool hasPeriodInfo = false;
+        for (int r = headerRow + 1; r < grid.length && r < headerRow + 20; r++) {
+          if (c < grid[r].length && _detectPeriodFromRow(grid[r][c]) > 0) {
+            hasPeriodInfo = true;
+            break;
+          }
+        }
+        if (hasPeriodInfo) {
+          timeSlotColumns.add(c);
+        }
+      }
+    }
 
-    // 数据结束行：从 dataStartRow 开始向下扫描，
-    // 遇到新的星期关键词行（可能是另一个课表块）或连续空行则停止
+    return {
+      'headerRow': headerRow,
+      'dayColMap': dayColMap,
+      'timeSlotColumns': timeSlotColumns,
+    };
+  }
+
+  /// 检测是否为分段行（上午/下午/晚上）
+  static bool _isSegmentHeader(String text) {
+    final t = text.trim();
+    if (t.isEmpty) return false;
+    final segments = ['上午', '下午', '晚上', '早', '午', '晚', 'morning', 'afternoon', 'evening'];
+    return segments.any((s) => t.toLowerCase().contains(s.toLowerCase()));
+  }
+
+  /// 从行文本中检测节次信息
+  static int _detectPeriodFromRow(String text) {
+    final t = text.trim();
+    if (t.isEmpty) return 0;
+
+    // 支持的格式: "1-2节", "第3-4节", "01-02节", "3节", "第3节"
+    final patterns = [
+      RegExp(r'^0*(\d{1,2})\s*[-~—]\s*0*(\d{1,2})\s*节'),      // 1-2节, 01-02节
+      RegExp(r'^第\s*0*(\d{1,2})\s*[-~—]\s*0*(\d{1,2})\s*节'),  // 第1-2节
+      RegExp(r'^0*(\d{1,2})\s*节'),                              // 1节, 01节
+      RegExp(r'^第\s*0*(\d{1,2})\s*节'),                         // 第1节
+    ];
+
+    for (final pattern in patterns) {
+      final match = pattern.firstMatch(t);
+      if (match != null) {
+        return int.parse(match.group(1)!);
+      }
+    }
+
+    return 0;
+  }
+
+  /// 智能计算节次
+  static int _calculateStartPeriod(
+    List<List<String>> grid,
+    int row,
+    int dataStartRow,
+    List<int> timeSlotColumns,
+  ) {
+    // 方法1: 从时间列检测节次
+    for (final col in timeSlotColumns) {
+      if (col < grid[row].length) {
+        final periodText = grid[row][col];
+        final detectedPeriod = _detectPeriodFromRow(periodText);
+        if (detectedPeriod > 0) {
+          return detectedPeriod;
+        }
+      }
+    }
+
+    // 方法2: 检查整行是否有节次信息
+    for (int c = 0; c < grid[row].length; c++) {
+      final detectedPeriod = _detectPeriodFromRow(grid[row][c]);
+      if (detectedPeriod > 0) {
+        return detectedPeriod;
+      }
+    }
+
+    // 方法3: 回退 — 每行默认对应 2 节课（1-2, 3-4, ...），这是最常见的课表布局
+    final slotIndex = row - dataStartRow;
+    return slotIndex * 2 + 1;
+  }
+
+  /// 确定数据范围
+  static Map<String, int> _detectDataRange(
+    List<List<String>> grid,
+    int headerRow,
+    Map<int, int> dayColMap,
+  ) {
+    int dataStartRow = headerRow + 1;
     int dataEndRow = grid.length;
+
     for (int r = dataStartRow; r < grid.length; r++) {
       // 检查是否是新的表头行（包含多个星期关键词）
       int weekdayCount = 0;
@@ -94,12 +348,11 @@ class XlsImportService {
           break;
         }
       }
-      // 如果连续2行全空则停止（允许偶尔空行）
+
       if (allEmpty && r + 1 < grid.length) {
         bool nextAllEmpty = true;
         for (final col in dayColMap.values) {
-          if (col < grid[r + 1].length &&
-              grid[r + 1][col].trim().isNotEmpty) {
+          if (col < grid[r + 1].length && grid[r + 1][col].trim().isNotEmpty) {
             nextAllEmpty = false;
             break;
           }
@@ -111,62 +364,37 @@ class XlsImportService {
       }
     }
 
-    // 4. 解析课程
-    final courses = <Course>[];
-    final colorMap = <String, int>{};
-    int colorIndex = 0;
-
-    for (int r = dataStartRow; r < dataEndRow; r++) {
-      // 计算当前行对应的节次
-      final slotIndex = r - dataStartRow;
-      final startPeriod = slotIndex * 2 + 1; // 1, 3, 5, 7, 9, 11
-
-      for (final entry in dayColMap.entries) {
-        final day = entry.key;
-        final col = entry.value;
-
-        if (col >= grid[r].length) continue;
-        final cellText = grid[r][col].trim();
-        if (cellText.isEmpty) continue;
-
-        final dayCourses = _parseCell(
-            cellText, day, startPeriod, colorMap, colorIndex);
-        courses.addAll(dayCourses);
-        colorIndex += dayCourses.length;
-      }
-    }
-
-    return courses;
+    return {'start': dataStartRow, 'end': dataEndRow};
   }
 
-  /// 检测文本中是否包含星期关键词，返回 weekday (1-7) 或 0
+  /// 检测文本中是否包含星期关键词
   static int _detectWeekday(String text) {
     final t = text.trim();
-    // 完整匹配优先
-    if (t == '星期一' || t == '周一' || t == '一' || t == 'Mon' || t == 'Monday')
-      return 1;
-    if (t == '星期二' || t == '周二' || t == '二' || t == 'Tue' || t == 'Tuesday')
-      return 2;
-    if (t == '星期三' || t == '周三' || t == '三' || t == 'Wed' || t == 'Wednesday')
-      return 3;
-    if (t == '星期四' || t == '周四' || t == '四' || t == 'Thu' || t == 'Thursday')
-      return 4;
-    if (t == '星期五' || t == '周五' || t == '五' || t == 'Fri' || t == 'Friday')
-      return 5;
-    if (t == '星期六' || t == '周六' || t == '六' || t == 'Sat' || t == 'Saturday')
-      return 6;
-    if (t == '星期日' || t == '星期天' || t == '周日' || t == '周天' || t == '日' || t == '天' || t == 'Sun' || t == 'Sunday')
-      return 7;
 
-    // 包含匹配（处理 "第1节 星期一" 这类情况）
-    if (t.contains('星期一') || t.contains('周一')) return 1;
-    if (t.contains('星期二') || t.contains('周二')) return 2;
-    if (t.contains('星期三') || t.contains('周三')) return 3;
-    if (t.contains('星期四') || t.contains('周四')) return 4;
-    if (t.contains('星期五') || t.contains('周五')) return 5;
-    if (t.contains('星期六') || t.contains('周六')) return 6;
-    if (t.contains('星期日') || t.contains('星期天') || t.contains('周日'))
-      return 7;
+    const fullMatchMap = {
+      '星期一': 1, '周一': 1, '一': 1, 'Mon': 1, 'Monday': 1,
+      '星期二': 2, '周二': 2, '二': 2, 'Tue': 2, 'Tuesday': 2,
+      '星期三': 3, '周三': 3, '三': 3, 'Wed': 3, 'Wednesday': 3,
+      '星期四': 4, '周四': 4, '四': 4, 'Thu': 4, 'Thursday': 4,
+      '星期五': 5, '周五': 5, '五': 5, 'Fri': 5, 'Friday': 5,
+      '星期六': 6, '周六': 6, '六': 6, 'Sat': 6, 'Saturday': 6,
+      '星期日': 7, '星期天': 7, '周日': 7, '周天': 7, '日': 7, '天': 7, 'Sun': 7, 'Sunday': 7,
+    };
+
+    if (fullMatchMap.containsKey(t)) return fullMatchMap[t]!;
+
+    const containsMap = {
+      '星期一': 1, '周一': 1,
+      '星期二': 2, '周二': 2,
+      '星期三': 3, '周三': 3,
+      '星期四': 4, '周四': 4,
+      '星期五': 5, '周五': 5,
+      '星期六': 6, '周六': 6,
+      '星期日': 7, '星期天': 7, '周日': 7,
+    };
+    for (final entry in containsMap.entries) {
+      if (t.contains(entry.key)) return entry.value;
+    }
 
     return 0;
   }
@@ -180,27 +408,35 @@ class XlsImportService {
     int colorIndex,
   ) {
     final courses = <Course>[];
-    // 用双换行分割多门课
-    final blocks = text.split(RegExp(r'\n\s*\n'));
+    List<String> blocks = [];
+
+    // 策略1: 双换行分割
+    blocks = text.split(RegExp(r'\n\s*\n'));
+
+    // 策略2: 如果双换行没结果，尝试换行 + 空格开头
+    if (blocks.every((b) => b.trim().isEmpty) || blocks.length == 1) {
+      blocks = text.split(RegExp(r'\n(?=\S)'));
+    }
+
+    // 策略3: 如果还没结果，尝试特殊分隔符
+    if (blocks.length == 1 && blocks[0].contains(RegExp(r'[|│/／]'))) {
+      blocks = text.split(RegExp(r'[|│/／]'));
+    }
 
     for (final block in blocks) {
       final trimmed = block.trim();
       if (trimmed.isEmpty) continue;
 
-      final course =
-          _parseSingleCourse(trimmed, day, startPeriod, colorMap, colorIndex);
+      final course = _parseSingleCourse(
+        trimmed,
+        day,
+        startPeriod,
+        colorMap,
+        colorIndex,
+      );
       if (course != null) {
         courses.add(course);
         colorIndex++;
-      }
-    }
-
-    // 如果双换行分割没结果，尝试单换行分割整个文本
-    if (courses.isEmpty) {
-      final course =
-          _parseSingleCourse(text, day, startPeriod, colorMap, colorIndex);
-      if (course != null) {
-        courses.add(course);
       }
     }
 
@@ -215,11 +451,13 @@ class XlsImportService {
     Map<String, int> colorMap,
     int colorIndex,
   ) {
-    final lines =
-        text.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+    final lines = text
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
     if (lines.isEmpty) return null;
 
-    // 智能识别各行内容
     String name = '';
     String teacher = '';
     String room = '';
@@ -254,8 +492,7 @@ class XlsImportService {
       final line = lines[i];
 
       // 跳过节次信息行（如 "第1-2节"、"01-02节"）
-      if (RegExp(r'^[\[\(（【]?\d{1,2}[\-~—]\d{1,2}节').hasMatch(line)) continue;
-      if (RegExp(r'^第\d').hasMatch(line) && line.contains('节')) continue;
+      if (_detectPeriodFromRow(line) > 0) continue;
 
       // 检测周次信息
       final weekInfo = _tryParseWeekLine(line);
@@ -267,15 +504,12 @@ class XlsImportService {
       }
 
       // 检测教师（含括号的可能是 "教师(职称)"）
-      // 排除：含周/节信息、括号内是教室/楼号（如 "(羽毛球E2504)"）
       if (teacher.isEmpty &&
           RegExp(r'[\(（]').hasMatch(line) &&
           !line.contains('周') &&
           !line.contains('节')) {
-        // 检查括号内容是否是教室信息（含楼/号/室/栋/层/数字字母组合）
         final parenContent = _extractParenContent(line);
-        final isRoom =
-            parenContent.isNotEmpty &&
+        final isRoom = parenContent.isNotEmpty &&
             RegExp(r'[楼号楼室教室栋层A-Za-z]\d', caseSensitive: false)
                 .hasMatch(parenContent);
         if (!isRoom) {
@@ -286,7 +520,8 @@ class XlsImportService {
 
       // 检测教室（含楼/号/室/教等关键词）
       if (room.isEmpty &&
-          RegExp(r'[楼号楼室教室栋层A-Z]\d', caseSensitive: false).hasMatch(line)) {
+          RegExp(r'[楼号楼室教室栋层A-Z]\d', caseSensitive: false)
+              .hasMatch(line)) {
         room = line;
         continue;
       }
@@ -321,40 +556,174 @@ class XlsImportService {
     );
   }
 
-  /// 尝试从一行文本中解析周次信息
-  /// 支持格式: "2-6,8-17([全])[01-02节]", "3,5,7([单])[03-04节]" 等
-  static Map<String, int>? _tryParseWeekLine(String line) {
-    // 必须包含"周"字才认为是周次行
-    if (!line.contains('周') && !line.contains('week')) return null;
+  /// 合并同名课程
+  static List<Course> _mergeCourses(List<Course> courses) {
+    final mergeMap = <String, _MergeGroup>{};
 
-    // 1. 移除所有括号内容（[01-02节], ([全]) 等），保留周次范围文本
+    for (final course in courses) {
+      // 合并键: name + teacher + day + startPeriod
+      final key =
+          '${course.name}_${course.teacher}_${course.day}_${course.startPeriod}';
+
+      if (mergeMap.containsKey(key)) {
+        // 合并周次
+        final group = mergeMap[key]!;
+        final weeks = _getWeeksInRange(
+          course.startWeek,
+          course.endWeek,
+          course.weekType,
+        );
+        group.weeks.addAll(weeks);
+        group.weeks.sort();
+
+        // 保留所有唯一的教室（如果当前为空但新值不为空，则更新）
+        if (group.room.isEmpty && course.room.isNotEmpty) {
+          group.room = course.room;
+        }
+      } else {
+        // 创建新的合并组
+        final weeks = _getWeeksInRange(
+          course.startWeek,
+          course.endWeek,
+          course.weekType,
+        );
+        mergeMap[key] = _MergeGroup(
+          name: course.name,
+          teacher: course.teacher,
+          room: course.room,
+          day: course.day,
+          startPeriod: course.startPeriod,
+          duration: course.duration,
+          weeks: weeks,
+        );
+      }
+    }
+
+    // 转换为 Course 列表
+    final merged = <Course>[];
+    for (final group in mergeMap.values) {
+      final weekInfo = _analyzeWeeks(group.weeks);
+
+      merged.add(Course(
+        id: '',
+        name: group.name,
+        room: group.room,
+        teacher: group.teacher,
+        day: group.day,
+        startPeriod: group.startPeriod,
+        duration: group.duration,
+        startWeek: weekInfo['startWeek']!,
+        endWeek: weekInfo['endWeek']!,
+        weekType: weekInfo['weekType']!,
+        colorValue: 0,
+      ));
+    }
+
+    return merged;
+  }
+
+  /// 获取范围内的周次列表
+  static List<int> _getWeeksInRange(int start, int end, int weekType) {
+    final weeks = <int>[];
+    for (int w = start; w <= end; w++) {
+      if (weekType == 1 && w % 2 == 0) continue; // 单周，跳过偶数
+      if (weekType == 2 && w % 2 == 1) continue; // 双周，跳过奇数
+      weeks.add(w);
+    }
+    return weeks;
+  }
+
+  /// 分析周次范围和类型
+  static Map<String, int> _analyzeWeeks(List<int> weeks) {
+    if (weeks.isEmpty) {
+      return {'startWeek': 1, 'endWeek': 20, 'weekType': 0};
+    }
+
+    weeks.sort();
+    final start = weeks.first;
+    final end = weeks.last;
+
+    // 分析是否为连续范围
+    bool isContinuous = true;
+    for (int i = 1; i < weeks.length; i++) {
+      if (weeks[i] - weeks[i - 1] != 1) {
+        isContinuous = false;
+        break;
+      }
+    }
+
+    if (isContinuous) {
+      // 检查单双周
+      bool allOdd = weeks.every((w) => w % 2 == 1);
+      bool allEven = weeks.every((w) => w % 2 == 0);
+      int weekType = allOdd ? 1 : (allEven ? 2 : 0);
+
+      return {
+        'startWeek': start,
+        'endWeek': end,
+        'weekType': weekType,
+      };
+    } else {
+      // 非连续周次，用 startWeek 和 endWeek 表示范围
+      return {
+        'startWeek': start,
+        'endWeek': end,
+        'weekType': 0,
+      };
+    }
+  }
+
+  /// 尝试从一行文本中解析周次信息
+  /// 支持格式: "2-6,8-17([全])[01-02节]", "3,5,7([单])[03-04节]", "11(周)" 等
+  static Map<String, int>? _tryParseWeekLine(String line) {
+    if (!line.contains('周') && !line.toLowerCase().contains('week')) {
+      return null;
+    }
+
+    // 1. 清理括号内容
     final cleaned =
         line.replaceAll(RegExp(r'[\[\(（【][^\]\)）】]*[\]\)）】]'), '').trim();
 
-    // 2. 从清理后的文本中提取逗号分隔的范围: "2-6,8-17"
+    // 2. 提取所有周次范围和单独周
+    final weeks = <int>[];
+
+    // 格式: "2-6", "8-17", "1-16"
     final rangePattern = RegExp(r'(\d+)\s*[-~—]\s*(\d+)');
-    final ranges = <int>[];
     for (final m in rangePattern.allMatches(cleaned)) {
       final start = int.parse(m.group(1)!);
       final end = int.parse(m.group(2)!);
       for (int i = start; i <= end; i++) {
-        ranges.add(i);
+        weeks.add(i);
       }
     }
-    if (ranges.isEmpty) return null;
 
-    // 3. 从原始文本判断单双周
+    // 格式: "11", "1,3,5,7" (单个数字，用逗号或空格分隔)
+    final singlePattern = RegExp(r'(\d+)');
+    for (final m in singlePattern.allMatches(cleaned)) {
+      final week = int.parse(m.group(1)!);
+      if (!weeks.contains(week)) {
+        weeks.add(week);
+      }
+    }
+
+    if (weeks.isEmpty) return null;
+
+    // 3. 判断单双周
     int weekType = 0;
-    if (line.contains('单周') || line.contains('([单])') || line.contains('[单]')) {
+    if (line.contains('单周') ||
+        line.contains('([单])') ||
+        line.contains('[单]')) {
       weekType = 1;
-    } else if (line.contains('双周') || line.contains('([双])') || line.contains('[双]')) {
+    } else if (line.contains('双周') ||
+        line.contains('([双])') ||
+        line.contains('[双]')) {
       weekType = 2;
     }
 
-    ranges.sort();
+    weeks.sort();
     return {
-      'startWeek': ranges.first,
-      'endWeek': ranges.last,
+      'startWeek': weeks.first,
+      'endWeek': weeks.last,
       'weekType': weekType,
     };
   }
@@ -368,7 +737,11 @@ class XlsImportService {
     // 尝试用分隔符拆分
     final separators = RegExp(r'[|│/／\s]{2,}');
     if (separators.hasMatch(text)) {
-      final parts = text.split(separators).map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+      final parts = text
+          .split(separators)
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
       if (parts.isNotEmpty) name = parts[0];
       if (parts.length > 1) teacher = parts[1];
       if (parts.length > 2) room = parts[2];
@@ -391,7 +764,10 @@ class XlsImportService {
 
   /// 为同名课程分配相同颜色
   static int _getCourseColor(
-      String name, Map<String, int> colorMap, int fallbackIndex) {
+    String name,
+    Map<String, int> colorMap,
+    int fallbackIndex,
+  ) {
     if (colorMap.containsKey(name)) {
       return colorMap[name]!;
     }
@@ -415,5 +791,25 @@ class _WeekdayPos {
   final int row;
   final int col;
   final int weekday;
-  _WeekdayPos(this.row, this.col, this.weekday);
+  const _WeekdayPos(this.row, this.col, this.weekday);
+}
+
+class _MergeGroup {
+  final String name;
+  String teacher;
+  String room;
+  final int day;
+  final int startPeriod;
+  final int duration;
+  final List<int> weeks;
+
+  _MergeGroup({
+    required this.name,
+    required this.teacher,
+    required this.room,
+    required this.day,
+    required this.startPeriod,
+    required this.duration,
+    required this.weeks,
+  });
 }

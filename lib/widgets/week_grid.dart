@@ -84,7 +84,7 @@ class _DayHeader extends StatelessWidget {
               alignment: Alignment.center,
               decoration: isToday
                   ? BoxDecoration(
-                      color: Colors.blue.withAlpha(isDark ? 60 : 30),
+                      color: Colors.blue.withValues(alpha: isDark ? 0.24 : 0.12),
                       borderRadius: BorderRadius.circular(4),
                     )
                   : null,

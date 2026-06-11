@@ -132,7 +132,7 @@ class _TodayCourseItem extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: bgColor.withAlpha(40),
+                    color: bgColor.withValues(alpha: 0.16),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
@@ -225,7 +225,7 @@ class _CurrentTimeIndicatorState extends State<_CurrentTimeIndicator> {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Card(
-        color: Colors.blue.withAlpha(20),
+        color: Colors.blue.withValues(alpha: 0.08),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
@@ -241,7 +241,11 @@ class _CurrentTimeIndicatorState extends State<_CurrentTimeIndicator> {
   }
 
   int _parseMinutes(String time) {
-    final parts = time.split(':');
-    return int.parse(parts[0]) * 60 + int.parse(parts[1]);
+    try {
+      final parts = time.split(':');
+      return int.parse(parts[0]) * 60 + int.parse(parts[1]);
+    } catch (_) {
+      return 0;
+    }
   }
 }

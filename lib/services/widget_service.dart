@@ -6,6 +6,17 @@ import '../models/time_slot.dart';
 /// 桌面小部件数据同步服务
 /// 通过 home_widget 包与原生 Android AppWidget 通信
 class WidgetService {
+  /// 将 UUID 字符串转为稳定的 32 位整数 ID
+  /// 使用 FNV-1a 哈希算法，比 Dart 默认 hashCode 更均匀分布
+  static int _stableId(String uuid) {
+    int hash = 0x811c9dc5; // FNV offset basis
+    for (int i = 0; i < uuid.length; i++) {
+      hash ^= uuid.codeUnitAt(i);
+      hash = (hash * 0x01000193) & 0xFFFFFFFF; // FNV prime, 32-bit
+    }
+    return hash;
+  }
+
   /// 同步今日课程到桌面小部件
   /// 格式化今日课程为 JSON，包含完整课程信息
   static Future<void> syncTodayCourses(
@@ -13,8 +24,20 @@ class WidgetService {
     List<TimeSlot> timeSlots,
   ) async {
     final List<Map<String, dynamic>> courseData = courses.map((course) {
+      // 从 timeSlots 获取真实上课时间
+      String startTime = '';
+      String endTime = '';
+      final startIdx = course.startPeriod - 1;
+      final endIdx = course.endPeriod - 1;
+      if (startIdx >= 0 && startIdx < timeSlots.length) {
+        startTime = timeSlots[startIdx].startTime;
+      }
+      if (endIdx >= 0 && endIdx < timeSlots.length) {
+        endTime = timeSlots[endIdx].endTime;
+      }
+
       return {
-        'id': course.id.hashCode,  // 使用hashCode作为int id
+        'id': _stableId(course.id),
         'name': course.name,
         'room': course.room,
         'teacher': course.teacher,
@@ -25,12 +48,27 @@ class WidgetService {
         'endWeek': course.endWeek,
         'weekType': course.weekType,
         'colorValue': course.colorValue,
+        'startTime': startTime,
+        'endTime': endTime,
       };
     }).toList();
 
     await HomeWidget.saveWidgetData<String>(
       'todayCourses',
       jsonEncode(courseData),
+    );
+
+    // 同步时间槽数据到小部件，用于计算进度条等
+    final List<Map<String, dynamic>> slotsData = timeSlots.map((slot) {
+      return {
+        'period': slot.period,
+        'startTime': slot.startTime,
+        'endTime': slot.endTime,
+      };
+    }).toList();
+    await HomeWidget.saveWidgetData<String>(
+      'timeSlots',
+      jsonEncode(slotsData),
     );
 
     // 更新所有相关的小部件 provider

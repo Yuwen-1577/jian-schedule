@@ -33,7 +33,7 @@ class CourseCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
           boxShadow: [
             BoxShadow(
-              color: bgColor.withAlpha(80),
+              color: bgColor.withValues(alpha: 0.31),
               blurRadius: 2,
               offset: const Offset(0, 1),
             ),
@@ -61,7 +61,7 @@ class CourseCard extends StatelessWidget {
                 course.room,
                 style: TextStyle(
                   fontSize: 9,
-                  color: textColor.withAlpha(200),
+                  color: textColor.withValues(alpha: 0.78),
                   height: 1.1,
                 ),
                 maxLines: 2,
@@ -72,7 +72,7 @@ class CourseCard extends StatelessWidget {
                 course.teacher,
                 style: TextStyle(
                   fontSize: 9,
-                  color: textColor.withAlpha(180),
+                  color: textColor.withValues(alpha: 0.71),
                   height: 1.1,
                 ),
                 maxLines: 2,

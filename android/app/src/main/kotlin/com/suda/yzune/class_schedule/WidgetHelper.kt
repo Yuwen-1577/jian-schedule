@@ -23,6 +23,25 @@ object WidgetHelper {
     const val KEY_WEEK_START_DATE = "semesterStartDate"
     const val PREF_NAME = "HomeWidgetPreferences"
 
+    /// 公共 onReceive 处理，避免三个 Provider 重复相同的逻辑
+    fun handleOnReceive(context: Context, intent: Intent, clazz: Class<*>) {
+        if (intent.action == AppWidgetManager.ACTION_APPWIDGET_UPDATE) {
+            val mgr = AppWidgetManager.getInstance(context)
+            val ids = mgr.getAppWidgetIds(ComponentName(context, clazz))
+            if (ids.isNotEmpty()) {
+                val courses = getTodayCourses(context)
+                when (clazz) {
+                    ScheduleWidgetListProvider::class.java ->
+                        ids.forEach { updateListView(context, mgr, it, courses) }
+                    ScheduleWidgetCompactProvider::class.java ->
+                        ids.forEach { updateCompactView(context, mgr, it, courses) }
+                    ScheduleWidgetWeekProvider::class.java ->
+                        ids.forEach { updateWeekView(context, mgr, it, courses) }
+                }
+            }
+        }
+    }
+
     fun dpToPx(context: Context, dp: Float): Int {
         return TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, dp, context.resources.displayMetrics
@@ -66,40 +85,29 @@ object WidgetHelper {
             val diffMs = now.time - startDate.time
             val diffDays = TimeUnit.MILLISECONDS.toDays(diffMs)
             if (diffDays < 0) 1 else (diffDays / 7 + 1).toInt()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            // 学期开始日期解析失败，返回第 1 周
+            android.util.Log.w("WidgetHelper", "Failed to parse semester start date", e)
             1
         }
     }
 
     fun updateAllWidgets(context: Context) {
-        val intent = Intent(context, ScheduleWidgetListProvider::class.java).apply {
-            action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
-        }
-        val listIds = AppWidgetManager.getInstance(context)
-            .getAppWidgetIds(ComponentName(context, ScheduleWidgetListProvider::class.java))
-        if (listIds.isNotEmpty()) {
-            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, listIds)
-            context.sendBroadcast(intent)
-        }
-
-        val compactIntent = Intent(context, ScheduleWidgetCompactProvider::class.java).apply {
-            action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
-        }
-        val compactIds = AppWidgetManager.getInstance(context)
-            .getAppWidgetIds(ComponentName(context, ScheduleWidgetCompactProvider::class.java))
-        if (compactIds.isNotEmpty()) {
-            compactIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, compactIds)
-            context.sendBroadcast(compactIntent)
-        }
-
-        val weekIntent = Intent(context, ScheduleWidgetWeekProvider::class.java).apply {
-            action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
-        }
-        val weekIds = AppWidgetManager.getInstance(context)
-            .getAppWidgetIds(ComponentName(context, ScheduleWidgetWeekProvider::class.java))
-        if (weekIds.isNotEmpty()) {
-            weekIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, weekIds)
-            context.sendBroadcast(weekIntent)
+        val widgetClasses = listOf(
+            ScheduleWidgetListProvider::class.java,
+            ScheduleWidgetCompactProvider::class.java,
+            ScheduleWidgetWeekProvider::class.java,
+        )
+        for (clazz in widgetClasses) {
+            val intent = Intent(context, clazz).apply {
+                action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+            }
+            val ids = AppWidgetManager.getInstance(context)
+                .getAppWidgetIds(ComponentName(context, clazz))
+            if (ids.isNotEmpty()) {
+                intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
+                context.sendBroadcast(intent)
+            }
         }
     }
 
@@ -139,11 +147,15 @@ object WidgetHelper {
                         startWeek = startWeek,
                         endWeek = endWeek,
                         weekType = weekType,
-                        colorValue = o.optInt("colorValue", 0xFF2196F3.toInt())
+                        colorValue = o.optInt("colorValue", 0xFF2196F3.toInt()),
+                        startTime = o.optString("startTime", ""),
+                        endTime = o.optString("endTime", "")
                     )
                 )
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            // JSON 解析失败，返回空列表
+            android.util.Log.w("WidgetHelper", "Failed to parse today courses JSON", e)
         }
 
         return courses
@@ -173,15 +185,18 @@ object WidgetHelper {
                     Color.parseColor(toArgbHex(course.colorValue))
                 )
                 item.setTextViewText(R.id.item_course_name, course.name)
-                val startH = ((course.startPeriod + 1) / 2 + 7).toString()
-                val startM = if (course.startPeriod % 2 == 1) "00" else "50"
-                val endP = course.startPeriod + course.duration - 1
-                val endH = ((endP + 1) / 2 + 7).toString()
-                val endM = if (endP % 2 == 1) "00" else "50"
-                item.setTextViewText(
-                    R.id.item_course_time,
+                val timeText = if (course.startTime.isNotEmpty() && course.endTime.isNotEmpty()) {
+                    "${course.startTime} - ${course.endTime}"
+                } else {
+                    // Fallback: 使用默认时间计算
+                    val startH = ((course.startPeriod + 1) / 2 + 7).toString()
+                    val startM = if (course.startPeriod % 2 == 1) "00" else "50"
+                    val endP = course.startPeriod + course.duration - 1
+                    val endH = ((endP + 1) / 2 + 7).toString()
+                    val endM = if (endP % 2 == 1) "00" else "50"
                     "${startH}:${startM} - ${endH}:${endM}"
-                )
+                }
+                item.setTextViewText(R.id.item_course_time, timeText)
                 val room = if (course.room.isNotBlank()) course.room else ""
                 item.setTextViewText(R.id.item_course_room, room)
                 views.addView(R.id.widget_course_list, item)
@@ -216,8 +231,8 @@ object WidgetHelper {
             var next: Course? = null
 
             for (course in sorted) {
-                val courseStart = periodToMinute(course.startPeriod)
-                val courseEnd = periodToMinute(course.startPeriod + course.duration - 1) + 45
+                val courseStart = parseMinutes(course.startTime, periodToMinute(course.startPeriod))
+                val courseEnd = parseMinutes(course.endTime, periodToMinute(course.startPeriod + course.duration - 1) + 45)
                 if (currentMinuteOfDay in courseStart until courseEnd) {
                     active = course
                     activeStartTime = courseStart
@@ -234,15 +249,17 @@ object WidgetHelper {
             views.setTextViewText(R.id.widget_compact_label, label)
             views.setTextViewText(R.id.widget_compact_name, course.name)
 
-            val startH = ((course.startPeriod + 1) / 2 + 7).toString()
-            val startM = if (course.startPeriod % 2 == 1) "00" else "50"
-            val endP = course.startPeriod + course.duration - 1
-            val endH = ((endP + 1) / 2 + 7).toString()
-            val endM = if (endP % 2 == 1) "00" else "50"
-            views.setTextViewText(
-                R.id.widget_compact_time,
+            val timeText = if (course.startTime.isNotEmpty() && course.endTime.isNotEmpty()) {
+                "${course.startTime} - ${course.endTime}"
+            } else {
+                val startH = ((course.startPeriod + 1) / 2 + 7).toString()
+                val startM = if (course.startPeriod % 2 == 1) "00" else "50"
+                val endP = course.startPeriod + course.duration - 1
+                val endH = ((endP + 1) / 2 + 7).toString()
+                val endM = if (endP % 2 == 1) "00" else "50"
                 "${startH}:${startM} - ${endH}:${endM}"
-            )
+            }
+            views.setTextViewText(R.id.widget_compact_time, timeText)
 
             val room = if (course.room.isNotBlank()) course.room else ""
             views.setTextViewText(R.id.widget_compact_room, room)
@@ -335,6 +352,17 @@ object WidgetHelper {
         }
     }
 
+    /// 解析 "HH:mm" 格式字符串为分钟数，失败时返回 fallback
+    private fun parseMinutes(time: String, fallback: Int): Int {
+        if (time.isEmpty()) return fallback
+        return try {
+            val parts = time.split(":")
+            parts[0].toInt() * 60 + parts[1].toInt()
+        } catch (_: Exception) {
+            fallback
+        }
+    }
+
     data class Course(
         val id: Int,
         val name: String,
@@ -346,6 +374,8 @@ object WidgetHelper {
         val startWeek: Int,
         val endWeek: Int,
         val weekType: Int,
-        val colorValue: Int
+        val colorValue: Int,
+        val startTime: String,
+        val endTime: String
     )
 }

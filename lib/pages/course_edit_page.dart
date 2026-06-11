@@ -18,6 +18,12 @@ class _CourseEditPageState extends State<CourseEditPage> {
   Course? _editingCourse;
   bool get _isEditing => _editingCourse != null;
 
+  // 提醒时间选项（分钟）
+  static const List<int> _reminderOptions = [0, 5, 10, 15, 30, 60];
+  static const List<String> _reminderLabels = [
+    '不提醒', '5 分钟前', '10 分钟前', '15 分钟前', '30 分钟前', '1 小时前',
+  ];
+
   // 表单字段
   late TextEditingController _nameCtrl;
   late TextEditingController _roomCtrl;
@@ -30,6 +36,7 @@ class _CourseEditPageState extends State<CourseEditPage> {
   late int _endWeek;
   late int _weekType;
   late int _colorValue;
+  late int _reminderMinutes;
 
   @override
   void initState() {
@@ -45,6 +52,7 @@ class _CourseEditPageState extends State<CourseEditPage> {
     _endWeek = 20;
     _weekType = 0;
     _colorValue = presetColors[0];
+    _reminderMinutes = 15;
   }
 
   @override
@@ -64,6 +72,7 @@ class _CourseEditPageState extends State<CourseEditPage> {
       _endWeek = course.endWeek;
       _weekType = course.weekType;
       _colorValue = course.colorValue;
+      _reminderMinutes = course.reminderMinutesBefore;
     }
   }
 
@@ -92,6 +101,8 @@ class _CourseEditPageState extends State<CourseEditPage> {
       weekType: _weekType,
       colorValue: _colorValue,
       note: _noteCtrl.text.trim(),
+      scheduleSetId: _editingCourse?.scheduleSetId ?? provider.activeSetId,
+      reminderMinutesBefore: _reminderMinutes,
     );
 
     if (_isEditing) {
@@ -184,7 +195,7 @@ class _CourseEditPageState extends State<CourseEditPage> {
                     () => _showPicker(
                       title: '选择开始节次',
                       current: _startPeriod - 1,
-                      items: List.generate(12, (i) => '第${i + 1}节'),
+                      items: List.generate(context.read<ScheduleProvider>().maxPeriod, (i) => '第${i + 1}节'),
                       onSelected: (i) => setState(() => _startPeriod = i + 1),
                     ),
                   ),
@@ -219,7 +230,7 @@ class _CourseEditPageState extends State<CourseEditPage> {
                     () => _showPicker(
                       title: '选择起始周',
                       current: _startWeek - 1,
-                      items: List.generate(25, (i) => '第${i + 1}周'),
+                      items: List.generate(maxWeekCount, (i) => '第${i + 1}周'),
                       onSelected: (i) =>
                           setState(() => _startWeek = i + 1),
                     ),
@@ -234,7 +245,7 @@ class _CourseEditPageState extends State<CourseEditPage> {
                     () => _showPicker(
                       title: '选择结束周',
                       current: _endWeek - 1,
-                      items: List.generate(25, (i) => '第${i + 1}周'),
+                      items: List.generate(maxWeekCount, (i) => '第${i + 1}周'),
                       onSelected: (i) =>
                           setState(() => _endWeek = i + 1),
                     ),
@@ -260,6 +271,21 @@ class _CourseEditPageState extends State<CourseEditPage> {
             CourseColorPicker(
               selectedColor: _colorValue,
               onColorSelected: (c) => setState(() => _colorValue = c),
+            ),
+            const SizedBox(height: 14),
+
+            // 提醒设置
+            _buildPickerRow(
+              '上课提醒',
+              Icons.notifications_outlined,
+              _reminderMinutes == 0 ? '不提醒' : '提前 $_reminderMinutes 分钟',
+              () => _showPicker(
+                title: '提前提醒时间',
+                current: _reminderOptions.indexOf(_reminderMinutes).clamp(0, _reminderOptions.length - 1),
+                items: _reminderLabels,
+                onSelected: (i) =>
+                    setState(() => _reminderMinutes = _reminderOptions[i]),
+              ),
             ),
             const SizedBox(height: 14),
 

@@ -1,22 +1,26 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/course.dart';
 import '../models/schedule_set.dart';
 import '../models/time_slot.dart';
 import '../services/database_service.dart';
+import '../services/notification_service.dart';
 import '../services/widget_service.dart';
 import '../utils/constants.dart';
 
 class ScheduleProvider extends ChangeNotifier {
   final DatabaseService _db = DatabaseService();
+  SharedPreferences? _prefs;
 
   List<Course> _courses = [];
-  List<TimeSlot> _timeSlots = defaultTimeSlots;
+  List<TimeSlot> _timeSlots = List.from(defaultTimeSlots);
   int _currentWeek = 1;
   int _maxPeriod = 12;
   DateTime _semesterStart = defaultSemesterStart;
 
   List<ScheduleSet> _scheduleSets = [];
-  String _activeSetId = 'default';
+  String _activeSetId = defaultSetId;
 
   // Getters
   List<Course> get courses => List.unmodifiable(_courses);
@@ -57,7 +61,7 @@ class ScheduleProvider extends ChangeNotifier {
 
   // 切换周次
   void setWeek(int week) {
-    _currentWeek = week.clamp(1, 25);
+    _currentWeek = week.clamp(1, maxWeekCount);
     notifyListeners();
   }
 
@@ -74,12 +78,18 @@ class ScheduleProvider extends ChangeNotifier {
 
   // 加载数据
   Future<void> loadData() async {
+    _prefs = await SharedPreferences.getInstance();
     _scheduleSets = await _db.getScheduleSets();
-    // 确保 activeSetId 存在
-    if (_scheduleSets.isNotEmpty &&
+
+    // 从 SharedPreferences 恢复上次活跃的课表集 ID
+    final savedId = _prefs!.getString('activeSetId');
+    if (savedId != null && _scheduleSets.any((s) => s.id == savedId)) {
+      _activeSetId = savedId;
+    } else if (_scheduleSets.isNotEmpty &&
         !_scheduleSets.any((s) => s.id == _activeSetId)) {
       _activeSetId = _scheduleSets.first.id;
     }
+
     // 设置学期开始日期
     final set = activeSet;
     if (set != null) {
@@ -90,7 +100,7 @@ class ScheduleProvider extends ChangeNotifier {
     _maxPeriod = _timeSlots.isNotEmpty ? _timeSlots.last.period : 12;
     recalculateWeek();
     notifyListeners();
-    _syncWidgetData();
+    _syncAll();
   }
 
   Future<void> _loadCoursesForActiveSet() async {
@@ -101,6 +111,8 @@ class ScheduleProvider extends ChangeNotifier {
   Future<void> switchSet(String setId) async {
     if (setId == _activeSetId) return;
     _activeSetId = setId;
+    // 持久化当前活跃集 ID，供小部件背景回调读取
+    await _prefs?.setString('activeSetId', _activeSetId);
     final set = activeSet;
     if (set != null) {
       _semesterStart = set.semesterStart;
@@ -108,7 +120,7 @@ class ScheduleProvider extends ChangeNotifier {
     await _loadCoursesForActiveSet();
     recalculateWeek();
     notifyListeners();
-    _syncWidgetData();
+    _syncAll();
   }
 
   // 创建课表集
@@ -154,7 +166,7 @@ class ScheduleProvider extends ChangeNotifier {
     await _db.insertCourse(course);
     _courses.add(course);
     notifyListeners();
-    _syncWidgetData();
+    _syncAll();
   }
 
   // 更新课程
@@ -165,17 +177,15 @@ class ScheduleProvider extends ChangeNotifier {
       _courses[index] = course;
     }
     notifyListeners();
-    _syncWidgetData();
+    _syncAll();
   }
 
   // 清空当前课表集所有课程
   Future<void> clearAllCourses() async {
-    for (final course in _courses) {
-      await _db.deleteCourse(course.id);
-    }
+    await _db.deleteCoursesBySet(_activeSetId);
     _courses.clear();
     notifyListeners();
-    _syncWidgetData();
+    _syncAll();
   }
 
   // 删除课程
@@ -183,7 +193,7 @@ class ScheduleProvider extends ChangeNotifier {
     await _db.deleteCourse(id);
     _courses.removeWhere((c) => c.id == id);
     notifyListeners();
-    _syncWidgetData();
+    _syncAll();
   }
 
   // 更新时间段
@@ -206,7 +216,7 @@ class ScheduleProvider extends ChangeNotifier {
     _timeSlots = List.from(slots);
     _maxPeriod = slots.isNotEmpty ? slots.last.period : 12;
     notifyListeners();
-    _syncWidgetData();
+    _syncAll();
   }
 
   // 导出 JSON
@@ -227,7 +237,7 @@ class ScheduleProvider extends ChangeNotifier {
     await _db.insertCourses(courses);
     _courses.addAll(courses);
     notifyListeners();
-    _syncWidgetData();
+    _syncAll();
   }
 
   // 同步桌面小部件数据
@@ -246,5 +256,29 @@ class ScheduleProvider extends ChangeNotifier {
       // Widget同步失败不影响主功能
       debugPrint('Widget同步失败: $e');
     }
+  }
+
+  // 调度课程提醒通知
+  Future<void> _scheduleNotifications() async {
+    try {
+      await NotificationService().scheduleWeeklyReminders(
+        courses: _courses,
+        timeSlots: _timeSlots,
+        currentWeek: _currentWeek,
+        semesterStart: _semesterStart,
+      );
+    } catch (e) {
+      debugPrint('通知调度失败: $e');
+    }
+  }
+
+  // 同步所有后台任务（小部件 + 通知）
+  void _syncAll() {
+    unawaited(_syncWidgetData().catchError((e) {
+      debugPrint('Widget同步失败: $e');
+    }));
+    unawaited(_scheduleNotifications().catchError((e) {
+      debugPrint('通知调度失败: $e');
+    }));
   }
 }

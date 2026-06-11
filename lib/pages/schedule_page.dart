@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/schedule_provider.dart';
+import '../utils/constants.dart';
 import '../widgets/week_grid.dart';
 import '../widgets/today_courses.dart';
 import 'course_edit_page.dart';
@@ -43,9 +44,8 @@ class _SchedulePageState extends State<SchedulePage> {
 
     // 使用今天的真实日期和星期
     final now = DateTime.now();
-    final weekdayNames = ['一', '二', '三', '四', '五', '六', '日'];
     String dateStr = '${now.year}.${now.month}.${now.day}';
-    String weekDayStr = '周${weekdayNames[now.weekday - 1]}';
+    String weekDayStr = '周${weekdayShortNames[now.weekday - 1]}';
     String titleStr = '$dateStr 第$currentWeek周 $weekDayStr';
 
     return Scaffold(
@@ -199,8 +199,7 @@ class _SchedulePageState extends State<SchedulePage> {
                 Expanded(
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    itemCount: 25,
-                    controller: _weekScrollController,
+                    itemCount: maxWeekCount,                    controller: _weekScrollController,
                     itemBuilder: (context, index) {
                       final week = index + 1;
                       final isCurrent = week == currentWeek;
@@ -243,7 +242,7 @@ class _SchedulePageState extends State<SchedulePage> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.chevron_right, size: 20),
-                  onPressed: currentWeek < 25
+                  onPressed: currentWeek < maxWeekCount
                       ? () {
                           provider.setWeek(currentWeek + 1);
                           _pageController.nextPage(
@@ -263,7 +262,7 @@ class _SchedulePageState extends State<SchedulePage> {
           Expanded(
             child: PageView.builder(
               controller: _pageController,
-              itemCount: 25,
+              itemCount: maxWeekCount,
               onPageChanged: (index) {
                 provider.setWeek(index + 1);
                 _syncWeekScroll(index + 1);

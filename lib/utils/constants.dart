@@ -38,9 +38,6 @@ const List<int> presetColors = [
 // 颜色转 Color
 Color intToColor(int value) => Color(value);
 
-// Color 转 int
-int colorToInt(Color color) => color.value;
-
 // 获取颜色亮度，用于决定文字颜色
 bool isDarkColor(int colorValue) {
   final color = Color(colorValue);
@@ -48,13 +45,38 @@ bool isDarkColor(int colorValue) {
   return luminance < 0.5;
 }
 
-// 学期开始日期 (默认 2025年2月17日)
-DateTime defaultSemesterStart = DateTime(2025, 2, 17);
+// 学期开始日期 (动态计算：取最近的周一作为默认值)
+DateTime get defaultSemesterStart {
+  final now = DateTime.now();
+  // 往前推到最近的周一
+  final daysFromMonday = now.weekday - 1;
+  return DateTime(now.year, now.month, now.day).subtract(Duration(days: daysFromMonday));
+}
 
 // 计算当前教学周
 int calculateCurrentWeek(DateTime semesterStart) {
   final now = DateTime.now();
   final diff = now.difference(semesterStart).inDays;
   final week = (diff / 7).ceil();
-  return week.clamp(1, 25);
+  return week.clamp(1, maxWeekCount);
 }
+
+// 默认课表集 ID
+const String defaultSetId = 'default';
+
+// 推荐主题色（Material 3 种子色）
+const List<Color> seedColors = [
+  Color(0xFF2196F3), // 蓝色
+  Color(0xFF3F51B5), // 靛蓝
+  Color(0xFF673AB7), // 深紫
+  Color(0xFF9C27B0), // 紫色
+  Color(0xFFE91E63), // 粉色
+  Color(0xFFF44336), // 红色
+  Color(0xFFFF9800), // 橙色
+  Color(0xFF4CAF50), // 绿色
+  Color(0xFF009688), // 青色
+  Color(0xFF607D8B), // 蓝灰
+];
+
+// 最大周数
+const int maxWeekCount = 25;

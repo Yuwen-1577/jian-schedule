@@ -4,6 +4,7 @@ import 'package:path/path.dart';
 import '../models/course.dart';
 import '../models/schedule_set.dart';
 import '../models/time_slot.dart';
+import '../utils/constants.dart';
 
 class DatabaseService {
   static Database? _database;
@@ -23,7 +24,7 @@ class DatabaseService {
     final path = join(dbPath, 'schedule.db');
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -52,7 +53,9 @@ class DatabaseService {
         weekType INTEGER DEFAULT 0,
         colorValue INTEGER DEFAULT 0xFF4CAF50,
         note TEXT DEFAULT '',
-        scheduleSetId TEXT DEFAULT ''
+        scheduleSetId TEXT DEFAULT '',
+        reminderMinutesBefore INTEGER DEFAULT 15,
+        FOREIGN KEY (scheduleSetId) REFERENCES schedule_sets(id) ON DELETE CASCADE
       )
     ''');
     await db.execute('''
@@ -64,9 +67,9 @@ class DatabaseService {
     ''');
     // 插入默认课表集
     await db.insert('schedule_sets', {
-      'id': 'default',
+      'id': defaultSetId,
       'name': '我的课表',
-      'semesterStart': DateTime(2025, 2, 17).toIso8601String(),
+      'semesterStart': defaultSemesterStart.toIso8601String(),
       'sortOrder': 0,
     });
     // 插入默认时间表
@@ -88,16 +91,21 @@ class DatabaseService {
       ''');
       // 插入默认课表集
       await db.insert('schedule_sets', {
-        'id': 'default',
+        'id': defaultSetId,
         'name': '我的课表',
-        'semesterStart': DateTime(2025, 2, 17).toIso8601String(),
+        'semesterStart': defaultSemesterStart.toIso8601String(),
         'sortOrder': 0,
       });
       // courses 表新增 scheduleSetId 列
       await db.execute(
           "ALTER TABLE courses ADD COLUMN scheduleSetId TEXT DEFAULT ''");
       // 现有课程归入默认集
-      await db.update('courses', {'scheduleSetId': 'default'});
+      await db.update('courses', {'scheduleSetId': defaultSetId});
+    }
+    if (oldVersion < 3) {
+      // v3: 课程提醒字段
+      await db.execute(
+          "ALTER TABLE courses ADD COLUMN reminderMinutesBefore INTEGER DEFAULT 15");
     }
   }
 
@@ -227,10 +235,14 @@ class DatabaseService {
 
   Future<void> saveTimeSlots(List<TimeSlot> slots) async {
     final db = await database;
-    await db.delete('time_slots');
-    for (final slot in slots) {
-      await db.insert('time_slots', slot.toMap());
-    }
+    await db.transaction((txn) async {
+      await txn.delete('time_slots');
+      final batch = txn.batch();
+      for (final slot in slots) {
+        batch.insert('time_slots', slot.toMap());
+      }
+      await batch.commit(noResult: true);
+    });
   }
 
   // ============ 导出/导入 ============
@@ -254,16 +266,25 @@ class DatabaseService {
       final data = json.decode(jsonStr) as Map<String, dynamic>;
       final version = data['version'] as String? ?? '1.0';
 
-      final coursesList = (data['courses'] as List)
+      final coursesRaw = data['courses'];
+      if (coursesRaw is! List) {
+        throw Exception('JSON 格式错误: courses 字段必须是数组');
+      }
+      final coursesList = coursesRaw
           .map((e) => Course.fromMap(e as Map<String, dynamic>))
           .toList();
-      final timeSlotsList = (data['timeSlots'] as List)
-          .map((e) => TimeSlot.fromMap(e as Map<String, dynamic>))
-          .toList();
+
+      final timeSlotsRaw = data['timeSlots'];
+      final timeSlotsList = timeSlotsRaw is List
+          ? timeSlotsRaw
+              .map((e) => TimeSlot.fromMap(e as Map<String, dynamic>))
+              .toList()
+          : <TimeSlot>[];
 
       List<ScheduleSet> scheduleSets = [];
-      if (data['scheduleSets'] != null) {
-        scheduleSets = (data['scheduleSets'] as List)
+      final setsRaw = data['scheduleSets'];
+      if (setsRaw is List && setsRaw.isNotEmpty) {
+        scheduleSets = setsRaw
             .map((e) => ScheduleSet.fromMap(e as Map<String, dynamic>))
             .toList();
       }
@@ -277,14 +298,14 @@ class DatabaseService {
         if (scheduleSets.isEmpty) {
           // v1.0 格式：创建默认集
           final defaultSet = ScheduleSet(
-            id: 'default',
+            id: defaultSetId,
             name: '我的课表',
-            semesterStart: DateTime(2025, 2, 17),
+            semesterStart: defaultSemesterStart,
           );
           await txn.insert('schedule_sets', defaultSet.toMap(),
               conflictAlgorithm: ConflictAlgorithm.replace);
           for (final course in coursesList) {
-            course.scheduleSetId = 'default';
+            course.scheduleSetId = defaultSetId;
           }
         } else {
           // v2.0 格式：导入课表集
@@ -319,6 +340,8 @@ class DatabaseService {
       throw Exception('JSON 格式错误: $e');
     } on DatabaseException catch (e) {
       throw Exception('数据库导入失败: $e');
+    } catch (e) {
+      throw Exception('导入失败: $e');
     }
   }
 }

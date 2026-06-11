@@ -50,7 +50,6 @@ lib/
 │   └── color_picker.dart      # 12 色预设选择器
 ├── services/
 │   ├── database_service.dart  # sqflite CRUD（schedule_sets + courses + time_slots 表）
-│   ├── export_service.dart    # JSON 导出/导入
 │   └── xls_import_service.dart # Excel (.xlsx) 课表解析导入
 └── utils/
     └── constants.dart         # 颜色预设、星期映射、周次计算
