@@ -267,27 +267,35 @@ class XlsImportService {
     return segments.any((s) => t.toLowerCase().contains(s.toLowerCase()));
   }
 
-  /// 从行文本中检测节次信息
+  /// 从行文本中检测节次信息（仅返回起始节次）
   static int _detectPeriodFromRow(String text) {
+    final range = _detectPeriodRange(text);
+    return range != null ? range[0] : 0;
+  }
+
+  /// 从行文本中检测起止节次，返回 [start, end]，无法检测返回 null
+  static List<int>? _detectPeriodRange(String text) {
     final t = text.trim();
-    if (t.isEmpty) return 0;
+    if (t.isEmpty) return null;
 
-    // 支持的格式: "1-2节", "第3-4节", "01-02节", "3节", "第3节"
-    final patterns = [
-      RegExp(r'^0*(\d{1,2})\s*[-~—]\s*0*(\d{1,2})\s*节'),      // 1-2节, 01-02节
-      RegExp(r'^第\s*0*(\d{1,2})\s*[-~—]\s*0*(\d{1,2})\s*节'),  // 第1-2节
-      RegExp(r'^0*(\d{1,2})\s*节'),                              // 1节, 01节
-      RegExp(r'^第\s*0*(\d{1,2})\s*节'),                         // 第1节
-    ];
-
-    for (final pattern in patterns) {
-      final match = pattern.firstMatch(t);
-      if (match != null) {
-        return int.parse(match.group(1)!);
-      }
+    // 带范围: "1-2节", "第3-4节", "01-02节"
+    final rangePattern = RegExp(r'^第?\s*0*(\d{1,2})\s*[-~—]\s*0*(\d{1,2})\s*节');
+    final rangeMatch = rangePattern.firstMatch(t);
+    if (rangeMatch != null) {
+      final start = int.parse(rangeMatch.group(1)!);
+      final end = int.parse(rangeMatch.group(2)!);
+      return [start, end];
     }
 
-    return 0;
+    // 单节: "3节", "第5节"
+    final singlePattern = RegExp(r'^第?\s*0*(\d{1,2})\s*节');
+    final singleMatch = singlePattern.firstMatch(t);
+    if (singleMatch != null) {
+      final p = int.parse(singleMatch.group(1)!);
+      return [p, p];
+    }
+
+    return null;
   }
 
   /// 智能计算节次
@@ -464,6 +472,16 @@ class XlsImportService {
     String teacher = '';
     String room = '';
     int wStart = 1, wEnd = 20, wType = 0;
+    int duration = 2; // 默认值，会被实际检测覆盖
+
+    // 扫描所有行找节次范围
+    for (final line in lines) {
+      final range = _detectPeriodRange(line);
+      if (range != null) {
+        duration = range[1] - range[0] + 1;
+        break;
+      }
+    }
 
     // 第一行通常是课程名
     name = lines[0];
@@ -481,7 +499,7 @@ class XlsImportService {
         teacher: teacher,
         day: day,
         startPeriod: startPeriod,
-        duration: 2,
+        duration: duration,
         startWeek: wStart,
         endWeek: wEnd,
         weekType: wType,
@@ -550,7 +568,7 @@ class XlsImportService {
       teacher: teacher,
       day: day,
       startPeriod: startPeriod,
-      duration: 2,
+      duration: duration,
       startWeek: wStart,
       endWeek: wEnd,
       weekType: wType,
@@ -654,12 +672,12 @@ class XlsImportService {
       }
     }
 
-    if (isContinuous) {
-      // 检查单双周
-      bool allOdd = weeks.every((w) => w % 2 == 1);
-      bool allEven = weeks.every((w) => w % 2 == 0);
-      int weekType = allOdd ? 1 : (allEven ? 2 : 0);
+    // 检查单双周（无论连续与否）
+    bool allOdd = weeks.every((w) => w % 2 == 1);
+    bool allEven = weeks.every((w) => w % 2 == 0);
+    int weekType = allOdd ? 1 : (allEven ? 2 : 0);
 
+    if (isContinuous) {
       return {
         'startWeek': start,
         'endWeek': end,
@@ -670,7 +688,7 @@ class XlsImportService {
       return {
         'startWeek': start,
         'endWeek': end,
-        'weekType': 0,
+        'weekType': weekType,
       };
     }
   }
@@ -683,9 +701,13 @@ class XlsImportService {
       return null;
     }
 
-    // 1. 清理括号内容
-    final cleaned =
+    // 1. 清理括号内容 + 残留节次信息（如 [01-02节] 未被括号匹配的 "01-02节"）
+    var cleaned =
         line.replaceAll(RegExp(r'[\[\(（【][^\]\)）】]*[\]\)）】]'), '').trim();
+    // 移除 "数字-数字节" 和 "数字节" 模式（防止节次范围污染周次解析）
+    cleaned = cleaned.replaceAll(RegExp(r'\d+\s*[-~—]\s*\d+\s*节'), '');
+    cleaned = cleaned.replaceAll(RegExp(r'\d+\s*节'), '');
+    cleaned = cleaned.trim();
 
     // 2. 提取所有周次范围和单独周
     final weeks = <int>[];
