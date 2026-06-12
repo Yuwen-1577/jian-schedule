@@ -7,8 +7,16 @@ import '../utils/constants.dart';
 /// 桌面小部件数据同步服务
 /// 通过 home_widget 包与原生 Android AppWidget 通信
 class WidgetService {
+  /// 同步学期开始日期到桌面小部件
+  /// Kotlin 端用此日期计算当前教学周
+  static Future<void> syncSemesterStart(DateTime semesterStart) async {
+    // 格式: yyyy-MM-dd，与 Kotlin SimpleDateFormat 匹配
+    final isoDate =
+        '${semesterStart.year}-${semesterStart.month.toString().padLeft(2, '0')}-${semesterStart.day.toString().padLeft(2, '0')}';
+    await HomeWidget.saveWidgetData<String>('semesterStartDate', isoDate);
+  }
+
   /// 同步今日课程到桌面小部件
-  /// 格式化今日课程为 JSON，包含完整课程信息
   static Future<void> syncTodayCourses(
     List<Course> courses,
     List<TimeSlot> timeSlots,

@@ -29,14 +29,15 @@ object WidgetHelper {
             val mgr = AppWidgetManager.getInstance(context)
             val ids = mgr.getAppWidgetIds(ComponentName(context, clazz))
             if (ids.isNotEmpty()) {
-                val courses = getTodayCourses(context)
+                val todayCourses = getTodayCourses(context)
+                val weekCourses = getAllCoursesForCurrentWeek(context)
                 when (clazz) {
                     ScheduleWidgetListProvider::class.java ->
-                        ids.forEach { updateListView(context, mgr, it, courses) }
+                        ids.forEach { updateListView(context, mgr, it, todayCourses) }
                     ScheduleWidgetCompactProvider::class.java ->
-                        ids.forEach { updateCompactView(context, mgr, it, courses) }
+                        ids.forEach { updateCompactView(context, mgr, it, todayCourses) }
                     ScheduleWidgetWeekProvider::class.java ->
-                        ids.forEach { updateWeekView(context, mgr, it, courses) }
+                        ids.forEach { updateWeekView(context, mgr, it, weekCourses) }
                 }
             }
         }
@@ -84,7 +85,7 @@ object WidgetHelper {
             val now = java.util.Date()
             val diffMs = now.time - startDate.time
             val diffDays = TimeUnit.MILLISECONDS.toDays(diffMs)
-            if (diffDays < 0) 1 else (diffDays / 7 + 1).toInt()
+            if (diffDays < 0) 1 else Math.ceil(diffDays / 7.0).toInt().coerceAtLeast(1).coerceAtMost(25)
         } catch (e: Exception) {
             // 学期开始日期解析失败，返回第 1 周
             android.util.Log.w("WidgetHelper", "Failed to parse semester start date", e)
@@ -156,6 +157,52 @@ object WidgetHelper {
         } catch (e: Exception) {
             // JSON 解析失败，返回空列表
             android.util.Log.w("WidgetHelper", "Failed to parse today courses JSON", e)
+        }
+
+        return courses
+    }
+
+    /// 获取当前教学周所有课程（不过滤星期几），用于周视图
+    fun getAllCoursesForCurrentWeek(context: Context): List<Course> {
+        val widgetPrefs = HomeWidgetPlugin.getData(context)
+        val coursesJson = widgetPrefs.getString(KEY_TODAY_COURSES, null)
+            ?: return emptyList()
+
+        val courses = mutableListOf<Course>()
+        val currentWeek = getCurrentTeachingWeek(context)
+
+        try {
+            val arr = JSONArray(coursesJson)
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                val startWeek = o.optInt("startWeek", 1)
+                val endWeek = o.optInt("endWeek", 20)
+                if (currentWeek < startWeek || currentWeek > endWeek) continue
+
+                val weekType = o.optInt("weekType", 0)
+                if (weekType == 1 && (currentWeek % 2 == 0)) continue
+                if (weekType == 2 && (currentWeek % 2 == 1)) continue
+
+                courses.add(
+                    Course(
+                        id = o.optInt("id", 0),
+                        name = o.optString("name", ""),
+                        room = o.optString("room", ""),
+                        teacher = o.optString("teacher", ""),
+                        day = o.optInt("day", 0),
+                        startPeriod = o.optInt("startPeriod", 1),
+                        duration = o.optInt("duration", 2),
+                        startWeek = startWeek,
+                        endWeek = endWeek,
+                        weekType = weekType,
+                        colorValue = o.optInt("colorValue", 0xFF2196F3.toInt()),
+                        startTime = o.optString("startTime", ""),
+                        endTime = o.optString("endTime", "")
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("WidgetHelper", "Failed to parse week courses JSON", e)
         }
 
         return courses

@@ -252,6 +252,9 @@ class ScheduleProvider extends ChangeNotifier {
   // 同步桌面小部件数据
   Future<void> _syncWidgetData() async {
     try {
+      // 同步学期开始日期（小部件用于计算当前教学周）
+      await WidgetService.syncSemesterStart(_semesterStart);
+
       // 获取今日课程
       final todayCourses = getTodayCourses();
       await WidgetService.syncTodayCourses(todayCourses, _timeSlots);
