@@ -40,7 +40,7 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> setSeedColor(Color color) async {
     _seedColor = color;
-    await _prefs?.setInt('seedColor', color.value);
+    await _prefs?.setInt('seedColor', color.toARGB32());
     notifyListeners();
   }
 }

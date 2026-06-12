@@ -161,7 +161,7 @@ class _SettingsPageState extends State<SettingsPage> {
                             decoration: BoxDecoration(
                               color: color,
                               shape: BoxShape.circle,
-                              border: settings.seedColor.value == color.value
+                              border: settings.seedColor.toARGB32() == color.toARGB32()
                                   ? Border.all(
                                       color: Theme.of(context)
                                           .colorScheme
@@ -169,14 +169,14 @@ class _SettingsPageState extends State<SettingsPage> {
                                       width: 3)
                                   : null,
                               boxShadow: [
-                                if (settings.seedColor.value == color.value)
+                                if (settings.seedColor.toARGB32() == color.toARGB32())
                                   BoxShadow(
                                     color: color.withValues(alpha: 0.4),
                                     blurRadius: 8,
                                   ),
                               ],
                             ),
-                            child: settings.seedColor.value == color.value
+                            child: settings.seedColor.toARGB32() == color.toARGB32()
                                 ? const Icon(Icons.check,
                                     color: Colors.white, size: 20)
                                 : null,

@@ -91,7 +91,7 @@ class CourseColorPicker extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              onColorSelected(pickerColor.value);
+              onColorSelected(pickerColor.toARGB32());
               Navigator.pop(ctx);
             },
             child: const Text('确定'),
