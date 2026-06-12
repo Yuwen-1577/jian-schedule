@@ -112,30 +112,29 @@ class _SettingsPageState extends State<SettingsPage> {
           // === 主题设置 ===
           _buildSectionTitle('主题设置'),
           Card(
-            child: Column(
-              children: [
-                RadioListTile<ThemeMode>(
-                  title: const Text('浅色模式'),
-                  secondary: const Icon(Icons.light_mode),
-                  value: ThemeMode.light,
-                  groupValue: settings.themeMode,
-                  onChanged: (v) => settings.setThemeMode(v!),
-                ),
-                RadioListTile<ThemeMode>(
-                  title: const Text('深色模式'),
-                  secondary: const Icon(Icons.dark_mode),
-                  value: ThemeMode.dark,
-                  groupValue: settings.themeMode,
-                  onChanged: (v) => settings.setThemeMode(v!),
-                ),
-                RadioListTile<ThemeMode>(
-                  title: const Text('跟随系统'),
-                  secondary: const Icon(Icons.settings_brightness),
-                  value: ThemeMode.system,
-                  groupValue: settings.themeMode,
-                  onChanged: (v) => settings.setThemeMode(v!),
-                ),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: SegmentedButton<ThemeMode>(
+                segments: const [
+                  ButtonSegment(
+                    value: ThemeMode.light,
+                    icon: Icon(Icons.light_mode, size: 18),
+                    label: Text('浅色'),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.dark,
+                    icon: Icon(Icons.dark_mode, size: 18),
+                    label: Text('深色'),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.system,
+                    icon: Icon(Icons.settings_brightness, size: 18),
+                    label: Text('跟随系统'),
+                  ),
+                ],
+                selected: {settings.themeMode},
+                onSelectionChanged: (v) => settings.setThemeMode(v.first),
+              ),
             ),
           ),
           const SizedBox(height: 20),
