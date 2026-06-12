@@ -92,6 +92,15 @@ adb install build/app/outputs/flutter-apk/app-release.apk
 
 ## 更新日志
 
+### v2.1.0 (2026-06-12)
+
+- 全新设计系统：暖灰中性色、Claude 风格极简视觉、统一间距/圆角/字体 token
+- 课程卡片重做：低饱和度背景 + 左侧色条，去掉 BoxShadow
+- 主题切换改为 SegmentedButton（浅色/深色/跟随系统）
+- 课表网格、时间列、今日课程全部迁移到 colorScheme token
+- 修复桌面小部件：学期开始日期同步、周次计算 off-by-one、周视图只显示今天课程
+- 修复 Excel 导入：duration 不再硬编码为 2、`[01-02节]` 不再腐蚀周次解析、非连续奇偶周正确识别 weekType
+
 ### v2.0.1 (2026-06-12)
 
 - 修复 Android 13+ 通知权限缺失导致提醒静默失败
