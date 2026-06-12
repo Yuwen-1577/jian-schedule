@@ -79,6 +79,12 @@ class ScheduleProvider extends ChangeNotifier {
   // 加载数据
   Future<void> loadData() async {
     _prefs = await SharedPreferences.getInstance();
+
+    final needsReschedule = _prefs!.getBool('boot_reschedule_needed') ?? false;
+    if (needsReschedule) {
+      await _prefs!.remove('boot_reschedule_needed');
+    }
+
     _scheduleSets = await _db.getScheduleSets();
 
     // 从 SharedPreferences 恢复上次活跃的课表集 ID
