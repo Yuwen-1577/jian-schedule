@@ -602,7 +602,33 @@ class _SettingsPageState extends State<SettingsPage> {
         context: context,
         builder: (ctx) => AlertDialog(
           title: const Text('导入 Excel 课表'),
-          content: Text('解析到 ${courses.length} 门课程，是否导入到当前课表集？'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('解析到 ${courses.length} 门课程，是否导入到当前课表集？'),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber, size: 16, color: Colors.orange),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '导入将追加到当前课表集，同名课程可能产生冲突',
+                        style: TextStyle(fontSize: 12, color: Colors.orange[800]),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),

@@ -42,7 +42,7 @@ class TimeColumn extends StatelessWidget {
                 Text(
                   slot.startTime,
                   style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 10,
                     color: textColor,
                     height: 1.1,
                   ),
@@ -50,7 +50,7 @@ class TimeColumn extends StatelessWidget {
                 Text(
                   slot.endTime,
                   style: TextStyle(
-                    fontSize: 8,
+                    fontSize: 9,
                     color: textColor?.withValues(alpha: 0.59),
                     height: 1.1,
                   ),

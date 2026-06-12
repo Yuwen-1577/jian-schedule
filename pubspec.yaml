@@ -1,7 +1,7 @@
 name: simple_schedule
 description: 简课表 - 跨平台课程表管理应用
 publish_to: 'none'
-version: 2.0.0+10
+version: 2.0.1+11
 
 environment:
   sdk: '>=3.11.0 <4.0.0'

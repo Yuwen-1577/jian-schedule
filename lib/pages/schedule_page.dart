@@ -48,6 +48,12 @@ class _SchedulePageState extends State<SchedulePage> {
     String weekDayStr = '周${weekdayShortNames[now.weekday - 1]}';
     String titleStr = '$dateStr 第$currentWeek周 $weekDayStr';
 
+    if (!provider.initialized) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: GestureDetector(

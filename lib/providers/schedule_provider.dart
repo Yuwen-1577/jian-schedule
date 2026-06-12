@@ -21,6 +21,7 @@ class ScheduleProvider extends ChangeNotifier {
 
   List<ScheduleSet> _scheduleSets = [];
   String _activeSetId = defaultSetId;
+  bool _initialized = false;
 
   // Getters
   List<Course> get courses => List.unmodifiable(_courses);
@@ -30,6 +31,7 @@ class ScheduleProvider extends ChangeNotifier {
   DateTime get semesterStart => _semesterStart;
   List<ScheduleSet> get scheduleSets => List.unmodifiable(_scheduleSets);
   String get activeSetId => _activeSetId;
+  bool get initialized => _initialized;
 
   ScheduleSet? get activeSet {
     if (_scheduleSets.isEmpty) return null;
@@ -105,6 +107,7 @@ class ScheduleProvider extends ChangeNotifier {
     _timeSlots = await _db.getTimeSlots();
     _maxPeriod = _timeSlots.isNotEmpty ? _timeSlots.last.period : 12;
     recalculateWeek();
+    _initialized = true;
     notifyListeners();
     _syncAll();
   }
