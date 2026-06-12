@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/time_slot.dart';
+import '../theme/app_theme.dart';
 
 class TimeColumn extends StatelessWidget {
   final List<TimeSlot> timeSlots;
@@ -10,24 +11,19 @@ class TimeColumn extends StatelessWidget {
     super.key,
     required this.timeSlots,
     required this.periodHeight,
-    this.width = 48,
+    this.width = ScheduleDim.timeColumnWidth,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.grey[400] : Colors.grey[700];
-    final bgColor = isDark ? Colors.grey[900] : Colors.grey[100];
+    final cs = Theme.of(context).colorScheme;
 
     return Container(
       width: width,
       decoration: BoxDecoration(
-        color: bgColor,
+        color: cs.surfaceContainerLow,
         border: Border(
-          right: BorderSide(
-            color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
-            width: 0.5,
-          ),
+          right: BorderSide(color: cs.outlineVariant, width: 0.5),
         ),
       ),
       child: Column(
@@ -43,16 +39,16 @@ class TimeColumn extends StatelessWidget {
                   slot.startTime,
                   style: TextStyle(
                     fontSize: 10,
-                    color: textColor,
-                    height: 1.1,
+                    color: cs.onSurfaceVariant,
+                    height: 1.2,
                   ),
                 ),
                 Text(
                   slot.endTime,
                   style: TextStyle(
                     fontSize: 9,
-                    color: textColor?.withValues(alpha: 0.59),
-                    height: 1.1,
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                    height: 1.2,
                   ),
                 ),
               ],

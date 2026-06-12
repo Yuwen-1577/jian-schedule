@@ -14,9 +14,7 @@ class CourseColorPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final selectedBorderColor = isDark ? Colors.white : Colors.black;
-    // 检查当前选中颜色是否在预设列表中
+    final cs = Theme.of(context).colorScheme;
     final isPreset = presetColors.contains(selectedColor);
 
     return Wrap(
@@ -34,14 +32,17 @@ class CourseColorPicker extends StatelessWidget {
                 color: intToColor(color),
                 shape: BoxShape.circle,
                 border: isSelected
-                    ? Border.all(color: selectedBorderColor, width: 3)
-                    : Border.all(color: Colors.grey[300]!, width: 1),
+                    ? Border.all(color: cs.outline, width: 2.5)
+                    : Border.all(color: cs.outlineVariant, width: 1),
                 boxShadow: isSelected
-                    ? [BoxShadow(color: intToColor(color).withValues(alpha: 0.31), blurRadius: 6)]
+                    ? [BoxShadow(
+                        color: intToColor(color).withValues(alpha: 0.3),
+                        blurRadius: 6,
+                      )]
                     : null,
               ),
               child: isSelected
-                  ? const Icon(Icons.check, color: Colors.white, size: 18)
+                  ? Icon(Icons.check, color: Colors.white, size: 18)
                   : null,
             ),
           );
@@ -53,19 +54,16 @@ class CourseColorPicker extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              // 如果当前选中的是自定义颜色，显示该颜色
               color: !isPreset ? intToColor(selectedColor) : null,
               shape: BoxShape.circle,
               border: Border.all(
-                color: !isPreset
-                    ? selectedBorderColor
-                    : Colors.grey[400]!,
-                width: !isPreset ? 3 : 1.5,
+                color: !isPreset ? cs.outline : cs.outlineVariant,
+                width: !isPreset ? 2.5 : 1.5,
               ),
             ),
             child: !isPreset
                 ? const Icon(Icons.check, color: Colors.white, size: 18)
-                : Icon(Icons.palette, size: 18, color: Colors.grey[600]),
+                : Icon(Icons.palette, size: 18, color: cs.onSurfaceVariant),
           ),
         ),
       ],

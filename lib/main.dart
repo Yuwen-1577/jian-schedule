@@ -7,6 +7,7 @@ import 'providers/settings_provider.dart';
 import 'services/database_service.dart';
 import 'services/notification_service.dart';
 import 'services/widget_service.dart';
+import 'theme/app_theme.dart';
 import 'utils/constants.dart';
 import 'pages/schedule_page.dart';
 
@@ -90,28 +91,8 @@ class ScheduleApp extends StatelessWidget {
           title: '简课表',
           debugShowCheckedModeBanner: false,
           themeMode: settings.themeMode,
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: settings.seedColor,
-              brightness: Brightness.light,
-            ),
-            useMaterial3: true,
-            appBarTheme: const AppBarTheme(
-              centerTitle: true,
-              elevation: 0,
-            ),
-          ),
-          darkTheme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: settings.seedColor,
-              brightness: Brightness.dark,
-            ),
-            useMaterial3: true,
-            appBarTheme: const AppBarTheme(
-              centerTitle: true,
-              elevation: 0,
-            ),
-          ),
+          theme: buildLightTheme(settings.seedColor),
+          darkTheme: buildDarkTheme(settings.seedColor),
           home: const SchedulePage(),
         );
       },

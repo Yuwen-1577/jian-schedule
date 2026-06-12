@@ -4,6 +4,7 @@ import '../models/course.dart';
 import '../models/time_slot.dart';
 import '../providers/schedule_provider.dart';
 import '../providers/settings_provider.dart';
+import '../theme/app_theme.dart';
 import '../utils/constants.dart';
 import '../pages/course_edit_page.dart';
 import 'course_card.dart';
@@ -26,8 +27,8 @@ class WeekGrid extends StatelessWidget {
       return const Center(child: Text('请先设置上课时间'));
     }
 
-    final periodHeight = 56.0;
-    final availWidth = MediaQuery.of(context).size.width - 48;
+    final periodHeight = ScheduleDim.periodHeight;
+    final availWidth = MediaQuery.of(context).size.width - ScheduleDim.timeColumnWidth;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -64,16 +65,15 @@ class _DayHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
     final today = DateTime.now().weekday;
 
     return Container(
-      height: 28,
+      height: ScheduleDim.dayHeaderHeight,
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[900] : Colors.blue[50],
+        color: cs.surfaceContainerHighest,
         border: Border(
-          bottom: BorderSide(
-              color: isDark ? Colors.grey[700]! : Colors.blue[200]!),
+          bottom: BorderSide(color: cs.outlineVariant, width: 0.5),
         ),
       ),
       child: Row(
@@ -84,18 +84,16 @@ class _DayHeader extends StatelessWidget {
               alignment: Alignment.center,
               decoration: isToday
                   ? BoxDecoration(
-                      color: Colors.blue.withValues(alpha: isDark ? 0.24 : 0.12),
-                      borderRadius: BorderRadius.circular(4),
+                      color: cs.primaryContainer,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
                     )
                   : null,
               child: Text(
                 weekdayNames[i],
                 style: TextStyle(
                   fontSize: 13,
-                  fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                  color: isToday
-                      ? (isDark ? Colors.blue[300] : Colors.blue[700])
-                      : (isDark ? Colors.grey[400] : Colors.grey[700]),
+                  fontWeight: isToday ? FontWeight.w600 : FontWeight.normal,
+                  color: isToday ? cs.primary : cs.onSurfaceVariant,
                 ),
               ),
             ),
@@ -125,10 +123,10 @@ class _GridBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
     final totalHeight = periodHeight * timeSlots.length;
     final colWidth = availWidth / days;
-    final borderColor = isDark ? Colors.grey[800]! : Colors.grey[200]!;
+    final borderColor = cs.outlineVariant;
 
     return SizedBox(
       height: totalHeight,
@@ -254,7 +252,9 @@ class _GridBody extends StatelessWidget {
               Navigator.pop(ctx);
               provider.deleteCourse(course.id);
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: const Text('删除'),
           ),
           TextButton(
