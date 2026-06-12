@@ -70,7 +70,7 @@ class _DayHeader extends StatelessWidget {
     return Container(
       height: 28,
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[850] : Colors.blue[50],
+        color: isDark ? Colors.grey[900] : Colors.blue[50],
         border: Border(
           bottom: BorderSide(
               color: isDark ? Colors.grey[700]! : Colors.blue[200]!),

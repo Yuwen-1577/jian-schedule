@@ -114,7 +114,7 @@ class AboutPage extends StatelessWidget {
                   'Copyright © 2026 简课表',
                   style: TextStyle(
                     fontSize: 12,
-                    color: isDark ? Colors.grey[500] : Colors.grey[500],
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
                   ),
                 ),
               ),
@@ -124,7 +124,7 @@ class AboutPage extends StatelessWidget {
                   '开源 · 免费 · 无广告',
                   style: TextStyle(
                     fontSize: 12,
-                    color: isDark ? Colors.grey[500] : Colors.grey[500],
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
                   ),
                 ),
               ),

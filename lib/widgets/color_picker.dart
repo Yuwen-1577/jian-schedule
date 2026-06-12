@@ -14,6 +14,8 @@ class CourseColorPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final selectedBorderColor = isDark ? Colors.white : Colors.black;
     // 检查当前选中颜色是否在预设列表中
     final isPreset = presetColors.contains(selectedColor);
 
@@ -32,7 +34,7 @@ class CourseColorPicker extends StatelessWidget {
                 color: intToColor(color),
                 shape: BoxShape.circle,
                 border: isSelected
-                    ? Border.all(color: Colors.black, width: 3)
+                    ? Border.all(color: selectedBorderColor, width: 3)
                     : Border.all(color: Colors.grey[300]!, width: 1),
                 boxShadow: isSelected
                     ? [BoxShadow(color: intToColor(color).withValues(alpha: 0.31), blurRadius: 6)]
@@ -56,7 +58,7 @@ class CourseColorPicker extends StatelessWidget {
               shape: BoxShape.circle,
               border: Border.all(
                 color: !isPreset
-                    ? Colors.black
+                    ? selectedBorderColor
                     : Colors.grey[400]!,
                 width: !isPreset ? 3 : 1.5,
               ),

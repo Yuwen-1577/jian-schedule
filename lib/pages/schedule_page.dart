@@ -150,7 +150,7 @@ class _SchedulePageState extends State<SchedulePage> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
                   border: Border(
-                    bottom: BorderSide(color: Colors.grey[300]!),
+                    bottom: BorderSide(color: Theme.of(context).dividerColor),
                   ),
                 ),
                 child: Row(
