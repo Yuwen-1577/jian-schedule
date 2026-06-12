@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:excel/excel.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 import 'package:uuid/uuid.dart';
 import '../models/course.dart';
 import '../utils/constants.dart';
@@ -206,7 +206,7 @@ class XlsImportService {
     final weekdayPositions = <_WeekdayPos>[];
     for (int r = 0; r < grid.length; r++) {
       for (int c = 0; c < grid[r].length; c++) {
-        final weekday = _detectWeekday(grid[r][c]);
+        final weekday = detectWeekday(grid[r][c]);
         if (weekday > 0) {
           weekdayPositions.add(_WeekdayPos(r, c, weekday));
         }
@@ -334,7 +334,7 @@ class XlsImportService {
       // 检查是否是新的表头行（包含多个星期关键词）
       int weekdayCount = 0;
       for (int c = 0; c < grid[r].length; c++) {
-        if (_detectWeekday(grid[r][c]) > 0) weekdayCount++;
+        if (detectWeekday(grid[r][c]) > 0) weekdayCount++;
       }
       if (weekdayCount >= 3) {
         dataEndRow = r;
@@ -369,7 +369,8 @@ class XlsImportService {
   }
 
   /// 检测文本中是否包含星期关键词
-  static int _detectWeekday(String text) {
+  @visibleForTesting
+  static int detectWeekday(String text) {
     final t = text.trim();
 
     const fullMatchMap = {
@@ -496,7 +497,7 @@ class XlsImportService {
       if (_detectPeriodFromRow(line) > 0) continue;
 
       // 检测周次信息
-      final weekInfo = _tryParseWeekLine(line);
+      final weekInfo = tryParseWeekLine(line);
       if (weekInfo != null) {
         wStart = weekInfo['startWeek']!;
         wEnd = weekInfo['endWeek']!;
@@ -676,7 +677,8 @@ class XlsImportService {
 
   /// 尝试从一行文本中解析周次信息
   /// 支持格式: "2-6,8-17([全])[01-02节]", "3,5,7([单])[03-04节]", "11(周)" 等
-  static Map<String, int>? _tryParseWeekLine(String line) {
+  @visibleForTesting
+  static Map<String, int>? tryParseWeekLine(String line) {
     if (!line.contains('周') && !line.toLowerCase().contains('week')) {
       return null;
     }

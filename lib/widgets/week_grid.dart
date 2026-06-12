@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/course.dart';
@@ -182,7 +183,7 @@ class _GridBody extends StatelessWidget {
 
     for (int d = 1; d <= days; d++) {
       final dayCourses = courseMap[d]!;
-      final placements = _calculatePlacements(dayCourses);
+      final placements = calculatePlacements(dayCourses);
 
       for (final p in placements) {
         final left = (d - 1) * colWidth + p.colOffset * (colWidth / p.totalCols);
@@ -208,38 +209,6 @@ class _GridBody extends StatelessWidget {
     }
 
     return widgets;
-  }
-
-  List<_Placement> _calculatePlacements(List<Course> courses) {
-    if (courses.isEmpty) return [];
-    final cols = <int, List<Course>>{};
-
-    for (final c in courses) {
-      int col = 0;
-      while (true) {
-        cols.putIfAbsent(col, () => []);
-        final overlaps = cols[col]!.any((e) => _overlaps(c, e));
-        if (!overlaps) {
-          cols[col]!.add(c);
-          break;
-        }
-        col++;
-      }
-    }
-
-    final result = <_Placement>[];
-    final total = cols.length;
-    for (final e in cols.entries) {
-      for (final c in e.value) {
-        result.add(_Placement(c, e.key, total));
-      }
-    }
-    return result;
-  }
-
-  bool _overlaps(Course a, Course b) {
-    return a.startPeriod < b.startPeriod + b.duration &&
-        a.startPeriod + a.duration > b.startPeriod;
   }
 
   void _onCourseTap(BuildContext context, Course course) {
@@ -299,9 +268,43 @@ class _GridBody extends StatelessWidget {
   }
 }
 
-class _Placement {
+class CoursePlacement {
   final Course course;
   final int colOffset;
   final int totalCols;
-  _Placement(this.course, this.colOffset, this.totalCols);
+  const CoursePlacement(this.course, this.colOffset, this.totalCols);
+}
+
+@visibleForTesting
+bool overlaps(Course a, Course b) {
+  return a.startPeriod < b.startPeriod + b.duration &&
+      a.startPeriod + a.duration > b.startPeriod;
+}
+
+@visibleForTesting
+List<CoursePlacement> calculatePlacements(List<Course> courses) {
+  if (courses.isEmpty) return [];
+  final cols = <int, List<Course>>{};
+
+  for (final c in courses) {
+    int col = 0;
+    while (true) {
+      cols.putIfAbsent(col, () => []);
+      final hasOverlap = cols[col]!.any((e) => overlaps(c, e));
+      if (!hasOverlap) {
+        cols[col]!.add(c);
+        break;
+      }
+      col++;
+    }
+  }
+
+  final result = <CoursePlacement>[];
+  final total = cols.length;
+  for (final e in cols.entries) {
+    for (final c in e.value) {
+      result.add(CoursePlacement(c, e.key, total));
+    }
+  }
+  return result;
 }
