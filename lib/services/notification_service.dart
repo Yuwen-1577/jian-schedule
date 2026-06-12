@@ -4,6 +4,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import '../models/course.dart';
 import '../models/time_slot.dart';
+import '../utils/constants.dart';
 
 /// 课程提醒通知服务
 /// 封装 flutter_local_notifications，提供课程提醒的调度和管理
@@ -15,16 +16,6 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   bool _initialized = false;
-
-  /// FNV-1a 哈希，将 UUID 字符串转为稳定的 32 位正整数
-  static int _stableId(String uuid) {
-    int hash = 0x811c9dc5; // FNV offset basis
-    for (int i = 0; i < uuid.length; i++) {
-      hash ^= uuid.codeUnitAt(i);
-      hash = (hash * 0x01000193) & 0xFFFFFFFF; // FNV prime, 32-bit
-    }
-    return hash & 0x7FFFFFFF; // 确保正数
-  }
 
   /// 初始化通知服务
   Future<bool> initialize() async {
@@ -132,7 +123,7 @@ class NotificationService {
       if (reminderTime.isBefore(now)) continue;
 
       // 调度通知
-      final id = _stableId(course.id);
+      final id = stableId(course.id);
       final body = course.room.isNotEmpty
           ? '${course.room}${course.teacher.isNotEmpty ? " · ${course.teacher}" : ""}'
           : (course.teacher.isNotEmpty ? course.teacher : '');
@@ -177,7 +168,7 @@ class NotificationService {
   /// 取消指定课程的通知
   Future<void> cancelForCourse(String courseId) async {
     if (!_initialized) return;
-    final id = _stableId(courseId);
+    final id = stableId(courseId);
     await _plugin.cancel(id);
   }
 

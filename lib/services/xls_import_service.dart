@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:excel/excel.dart';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../models/course.dart';
 import '../utils/constants.dart';
@@ -193,8 +194,8 @@ class XlsImportService {
           }
         }
       }
-    } catch (_) {
-      // 忽略任何错误
+    } catch (e) {
+      debugPrint('Failed to extract merged cell value: $e');
     }
     return null;
   }
@@ -781,7 +782,8 @@ class XlsImportService {
     if (cell == null) return '';
     try {
       return cell.value?.toString() ?? '';
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Failed to read cell value: $e');
       return cell.toString();
     }
   }

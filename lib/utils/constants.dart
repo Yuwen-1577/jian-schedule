@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 
-// 学期预设
-const List<String> semesterNames = [
-  '大一上学期',
-  '大一下学期',
-  '大二上学期',
-  '大二下学期',
-  '大三上学期',
-  '大三下学期',
-  '大四上学期',
-  '大四下学期',
-];
+// FNV-1a 哈希，将 UUID 字符串转为稳定的 32 位正整数
+int stableId(String uuid) {
+  int hash = 0x811c9dc5; // FNV offset basis
+  for (int i = 0; i < uuid.length; i++) {
+    hash ^= uuid.codeUnitAt(i);
+    hash = (hash * 0x01000193) & 0xFFFFFFFF; // FNV prime, 32-bit
+  }
+  return hash & 0x7FFFFFFF; // 确保正数
+}
 
 // 周几名称
 const List<String> weekdayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];

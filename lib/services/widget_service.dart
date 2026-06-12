@@ -2,21 +2,11 @@ import 'dart:convert';
 import 'package:home_widget/home_widget.dart';
 import '../models/course.dart';
 import '../models/time_slot.dart';
+import '../utils/constants.dart';
 
 /// 桌面小部件数据同步服务
 /// 通过 home_widget 包与原生 Android AppWidget 通信
 class WidgetService {
-  /// 将 UUID 字符串转为稳定的 32 位整数 ID
-  /// 使用 FNV-1a 哈希算法，比 Dart 默认 hashCode 更均匀分布
-  static int _stableId(String uuid) {
-    int hash = 0x811c9dc5; // FNV offset basis
-    for (int i = 0; i < uuid.length; i++) {
-      hash ^= uuid.codeUnitAt(i);
-      hash = (hash * 0x01000193) & 0xFFFFFFFF; // FNV prime, 32-bit
-    }
-    return hash;
-  }
-
   /// 同步今日课程到桌面小部件
   /// 格式化今日课程为 JSON，包含完整课程信息
   static Future<void> syncTodayCourses(
@@ -37,7 +27,7 @@ class WidgetService {
       }
 
       return {
-        'id': _stableId(course.id),
+        'id': stableId(course.id),
         'name': course.name,
         'room': course.room,
         'teacher': course.teacher,
