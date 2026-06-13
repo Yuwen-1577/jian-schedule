@@ -74,10 +74,7 @@ class _SchedulePageState extends State<SchedulePage> {
             icon: const Icon(Icons.add),
             tooltip: '添加课程',
             onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CourseEditPage()),
-              );
+              await CourseEditBottomSheet.show(context);
             },
           ),
           PopupMenuButton<String>(

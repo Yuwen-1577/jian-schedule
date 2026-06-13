@@ -4,12 +4,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SettingsProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.light;
   bool _showWeekends = true;
+  bool _useSystemFont = false;
   bool _initialized = false;
   Color _seedColor = Colors.blue;
   SharedPreferences? _prefs;
 
   ThemeMode get themeMode => _themeMode;
   bool get showWeekends => _showWeekends;
+  bool get useSystemFont => _useSystemFont;
   bool get initialized => _initialized;
   Color get seedColor => _seedColor;
 
@@ -18,6 +20,7 @@ class SettingsProvider extends ChangeNotifier {
     final themeIndex = _prefs!.getInt('themeMode') ?? 0;
     _themeMode = ThemeMode.values[themeIndex];
     _showWeekends = _prefs!.getBool('showWeekends') ?? true;
+    _useSystemFont = _prefs!.getBool('useSystemFont') ?? false;
     final seedColorValue = _prefs!.getInt('seedColor');
     if (seedColorValue != null) {
       _seedColor = Color(seedColorValue);
@@ -41,6 +44,11 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> setSeedColor(Color color) async {
     _seedColor = color;
     await _prefs?.setInt('seedColor', color.toARGB32());
+    notifyListeners();
+  }
+  Future<void> setUseSystemFont(bool use) async {
+    _useSystemFont = use;
+    await _prefs?.setBool('useSystemFont', use);
     notifyListeners();
   }
 }

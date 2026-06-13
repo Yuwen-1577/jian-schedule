@@ -61,13 +61,7 @@ class TodayCourses extends StatelessWidget {
           ...courses.map((course) => _TodayCourseItem(
                 course: course,
                 timeSlots: timeSlots,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const CourseEditPage(),
-                    settings: RouteSettings(arguments: course),
-                  ),
-                ),
+                onTap: () => CourseEditBottomSheet.show(context, course: course),
               )),
         if (timeSlots.isNotEmpty) const _CurrentTimeIndicator(),
       ],
@@ -149,25 +143,6 @@ class _TodayCourseItem extends StatelessWidget {
                   ],
                 ),
               ),
-              if (course.weekType != 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: Gap.sm,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: accentColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                  ),
-                  child: Text(
-                    weekTypeNames[course.weekType],
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: accentColor,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
             ],
           ),
         ),

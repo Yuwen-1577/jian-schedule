@@ -6,7 +6,7 @@ import '../providers/schedule_provider.dart';
 import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/constants.dart';
-import '../pages/course_edit_page.dart';
+import '../pages/course_edit_page.dart'; // Contains CourseEditBottomSheet
 import 'course_card.dart';
 import 'time_column.dart';
 
@@ -103,7 +103,7 @@ class _DayHeader extends StatelessWidget {
   }
 }
 
-class _GridBody extends StatelessWidget {
+class _GridBody extends StatefulWidget {
   final int week;
   final int days;
   final List<TimeSlot> timeSlots;
@@ -121,48 +121,183 @@ class _GridBody extends StatelessWidget {
   });
 
   @override
+  State<_GridBody> createState() => _GridBodyState();
+}
+
+class _GridBodyState extends State<_GridBody> {
+  int? _dragDay;
+  int? _dragStartPeriod;
+  int? _dragEndPeriod;
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final totalHeight = periodHeight * timeSlots.length;
-    final colWidth = availWidth / days;
+    final totalHeight = widget.periodHeight * widget.timeSlots.length;
+    final colWidth = widget.availWidth / widget.days;
     final borderColor = cs.outlineVariant;
 
     return SizedBox(
       height: totalHeight,
       child: Stack(
         children: [
-          // 水平网格线 + 竖直线
-          ...List.generate(timeSlots.length, (row) {
+          // 水平网格线
+          ...List.generate(widget.timeSlots.length, (row) {
             return Positioned(
-              top: row * periodHeight,
+              top: row * widget.periodHeight,
               left: 0,
               right: 0,
-              height: periodHeight,
+              height: widget.periodHeight,
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   border: Border(
-                    bottom: BorderSide(color: borderColor, width: 0.5),
+                    bottom: BorderSide(color: borderColor.withValues(alpha: 0.3), width: 0.5),
                   ),
-                ),
-                child: Row(
-                  children: List.generate(days, (col) {
-                    return Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          border: Border(
-                            right: col < days - 1
-                                ? BorderSide(color: borderColor, width: 0.5)
-                                : BorderSide.none,
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
                 ),
               ),
             );
           }),
-          // 课程卡片
+          
+          // 铺满网格用于接收拖拽事件 (创建新课程 或 接收卡片拖放)
+          Positioned.fill(
+            child: Row(
+              children: List.generate(widget.days, (col) {
+                final d = col + 1;
+                return Expanded(
+                  child: DragTarget<Course>(
+                    onWillAcceptWithDetails: (details) => true,
+                    onAcceptWithDetails: (details) async {
+                      final RenderBox box = context.findRenderObject() as RenderBox;
+                      final localOffset = box.globalToLocal(details.offset);
+                      // Adjust dy to map to period
+                      final droppedStartPeriod = (localOffset.dy / widget.periodHeight).floor() + 1;
+                      final course = details.data;
+                      
+                      final s = droppedStartPeriod.clamp(1, widget.timeSlots.length - course.duration + 1);
+                      if (course.day == d && course.startPeriod == s) return;
+                      
+                      final newCourse = Course(
+                        id: course.id,
+                        name: course.name,
+                        room: course.room,
+                        teacher: course.teacher,
+                        day: d,
+                        startPeriod: s,
+                        duration: course.duration,
+                        activeWeeks: List.from(course.activeWeeks),
+                        colorValue: course.colorValue,
+                        note: course.note,
+                        scheduleSetId: course.scheduleSetId,
+                      );
+                      
+                      final dayCourses = widget.provider.getCoursesForDay(widget.week, d).where((c) => c.id != course.id).toList();
+                      final hasConflict = dayCourses.any((c) => overlaps(c, newCourse));
+                      
+                      if (hasConflict) {
+                        final allow = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('课程时间冲突'),
+                            content: const Text('您拖放的时间段已经有课程了。是否继续创建并形成堆叠卡片？'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, true), 
+                                style: TextButton.styleFrom(foregroundColor: cs.primary),
+                                child: const Text('继续'),
+                              ),
+                            ],
+                          )
+                        );
+                        if (allow != true) return;
+                      }
+                      
+                      widget.provider.updateCourse(newCourse);
+                    },
+                    builder: (context, candidateData, rejectedData) {
+                      return GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onLongPressStart: (details) {
+                          setState(() {
+                            _dragDay = d;
+                            _dragStartPeriod = (details.localPosition.dy / widget.periodHeight).floor() + 1;
+                            _dragEndPeriod = _dragStartPeriod;
+                          });
+                        },
+                        onLongPressMoveUpdate: (details) {
+                          if (_dragDay == d && _dragStartPeriod != null) {
+                            setState(() {
+                              final period = (details.localPosition.dy / widget.periodHeight).floor() + 1;
+                              _dragEndPeriod = period.clamp(_dragStartPeriod!, widget.timeSlots.length);
+                            });
+                          }
+                        },
+                        onLongPressEnd: (details) async {
+                          if (_dragDay != d || _dragStartPeriod == null || _dragEndPeriod == null) return;
+                          
+                          final s = _dragStartPeriod!;
+                          final e = _dragEndPeriod!;
+                          final duration = e - s + 1;
+                          
+                          setState(() {
+                            _dragDay = null;
+                            _dragStartPeriod = null;
+                            _dragEndPeriod = null;
+                          });
+                          
+                          final newCourse = Course(id: '', name: '', room: '', teacher: '', day: d, startPeriod: s, duration: duration, activeWeeks: [widget.week], colorValue: 0, note: '', scheduleSetId: '');
+                          final dayCourses = widget.provider.getCoursesForDay(widget.week, d);
+                          final hasConflict = dayCourses.any((c) => overlaps(c, newCourse));
+                          
+                          if (hasConflict) {
+                            final allow = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('课程时间冲突'),
+                                content: const Text('您选中的时间段已经有课程了。是否继续创建并形成堆叠卡片？'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, true), 
+                                    style: TextButton.styleFrom(foregroundColor: cs.primary),
+                                    child: const Text('继续'),
+                                  ),
+                                ],
+                              )
+                            );
+                            if (allow != true) return;
+                          }
+                          
+                          if (mounted) {
+                            CourseEditBottomSheet.show(context, day: d, startPeriod: s, duration: duration);
+                          }
+                        },
+                        child: Stack(
+                          children: [
+                            if (_dragDay == d && _dragStartPeriod != null && _dragEndPeriod != null)
+                              Positioned(
+                                top: (_dragStartPeriod! - 1) * widget.periodHeight,
+                                left: 2,
+                                right: 2,
+                                height: (_dragEndPeriod! - _dragStartPeriod! + 1) * widget.periodHeight,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: cs.primary.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                                    border: Border.all(color: cs.primary.withValues(alpha: 0.5)),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    }
+                  ),
+                );
+              }),
+            ),
+          ),
+
+          // 课程卡片 (分组渲染，支持横滑切牌)
           ..._buildCourseCards(context, colWidth),
         ],
       ),
@@ -171,33 +306,26 @@ class _GridBody extends StatelessWidget {
 
   List<Widget> _buildCourseCards(BuildContext context, double colWidth) {
     final widgets = <Widget>[];
-    final courseMap = <int, List<Course>>{};
 
-    for (int d = 1; d <= days; d++) {
-      courseMap[d] = provider.getCoursesForDay(week, d);
-    }
-
-    for (int d = 1; d <= days; d++) {
-      final dayCourses = courseMap[d]!;
+    for (int d = 1; d <= widget.days; d++) {
+      final dayCourses = widget.provider.getCoursesForDay(widget.week, d);
+      if (dayCourses.isEmpty) continue;
+      
       final placements = calculatePlacements(dayCourses);
+      final groups = _groupPlacements(placements);
 
-      for (final p in placements) {
-        final left = (d - 1) * colWidth + p.colOffset * (colWidth / p.totalCols);
-        final width = colWidth / p.totalCols - 1;
-        final top = (p.course.startPeriod - 1) * periodHeight;
-        final height = p.course.duration * periodHeight - 1;
-
+      for (final group in groups) {
         widgets.add(
           Positioned(
-            left: left,
-            top: top,
-            width: width,
-            height: height,
-            child: CourseCard(
-              course: p.course,
-              height: height,
-              onTap: () => _onCourseTap(context, p.course),
-              onLongPress: () => _onCourseLongPress(context, p.course),
+            left: (d - 1) * colWidth + 2.0,
+            top: 0,
+            bottom: 0,
+            width: colWidth - 4.0,
+            child: _StackedCourseGroup(
+              group: group,
+              colWidth: colWidth,
+              periodHeight: widget.periodHeight,
+              parentContext: context,
             ),
           ),
         );
@@ -207,107 +335,120 @@ class _GridBody extends StatelessWidget {
     return widgets;
   }
 
-  void _onCourseTap(BuildContext context, Course course) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const CourseEditPage(),
-        settings: RouteSettings(arguments: course),
-      ),
-    );
+  List<List<CoursePlacement>> _groupPlacements(List<CoursePlacement> placements) {
+    if (placements.isEmpty) return [];
+    final sorted = List<CoursePlacement>.from(placements)..sort((a,b) => a.course.startPeriod.compareTo(b.course.startPeriod));
+    
+    final groups = <List<CoursePlacement>>[];
+    List<CoursePlacement> currentGroup = [sorted.first];
+    int currentMaxEnd = sorted.first.course.startPeriod + sorted.first.course.duration;
+
+    for (int i = 1; i < sorted.length; i++) {
+      final p = sorted[i];
+      if (p.course.startPeriod < currentMaxEnd) {
+        currentGroup.add(p);
+        if (p.course.startPeriod + p.course.duration > currentMaxEnd) {
+          currentMaxEnd = p.course.startPeriod + p.course.duration;
+        }
+      } else {
+        groups.add(currentGroup);
+        currentGroup = [p];
+        currentMaxEnd = p.course.startPeriod + p.course.duration;
+      }
+    }
+    groups.add(currentGroup);
+    return groups;
+  }
+}
+
+class _StackedCourseGroup extends StatefulWidget {
+  final List<CoursePlacement> group;
+  final double colWidth;
+  final double periodHeight;
+  final BuildContext parentContext;
+
+  const _StackedCourseGroup({
+    required this.group,
+    required this.colWidth,
+    required this.periodHeight,
+    required this.parentContext,
+  });
+
+  @override
+  State<_StackedCourseGroup> createState() => _StackedCourseGroupState();
+}
+
+class _StackedCourseGroupState extends State<_StackedCourseGroup> {
+  int _topIndex = 0;
+
+  @override
+  void didUpdateWidget(covariant _StackedCourseGroup oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_topIndex >= widget.group.length) {
+      _topIndex = 0;
+    }
   }
 
-  void _onCourseLongPress(BuildContext context, Course course) {
-    final cs = Theme.of(context).colorScheme;
-    final bgColor = intToColor(course.colorValue);
+  @override
+  Widget build(BuildContext context) {
+    final sorted = List<CoursePlacement>.from(widget.group);
+    final topP = sorted.removeAt(_topIndex);
+    sorted.add(topP); // Put top element at the end of the list so it renders last (on top)
 
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.lg, Gap.lg, Gap.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 课程详情卡片
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(Gap.lg),
-                decoration: BoxDecoration(
-                  color: bgColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(course.name,
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: cs.onSurface)),
-                    const SizedBox(height: Gap.sm),
-                    if (course.room.isNotEmpty)
-                      Text('教室: ${course.room}',
-                          style: TextStyle(color: cs.onSurfaceVariant)),
-                    if (course.teacher.isNotEmpty)
-                      Text('教师: ${course.teacher}',
-                          style: TextStyle(color: cs.onSurfaceVariant)),
-                    Text(
-                      '${weekdayNames[course.day - 1]} 第${course.startPeriod}-${course.endPeriod}节 · 第${course.startWeek}-${course.endWeek}周',
-                      style: TextStyle(color: cs.onSurfaceVariant),
-                    ),
-                  ],
+    final width = widget.colWidth - 4.0;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.deferToChild,
+      onHorizontalDragEnd: (details) {
+        if (widget.group.length <= 1) return;
+        if (details.primaryVelocity! > 0) {
+          setState(() => _topIndex = (_topIndex - 1 + widget.group.length) % widget.group.length);
+        } else if (details.primaryVelocity! < 0) {
+          setState(() => _topIndex = (_topIndex + 1) % widget.group.length);
+        }
+      },
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: sorted.map((p) {
+          final isTop = p == topP;
+          final leftOffset = isTop ? 0.0 : p.colOffset * 8.0;
+          final topOffset = isTop ? 0.0 : p.colOffset * 4.0;
+          final scale = isTop ? 1.0 : 0.93;
+          final opacity = isTop ? 1.0 : 0.8;
+
+          final top = (p.course.startPeriod - 1) * widget.periodHeight + topOffset;
+          final height = p.course.duration * widget.periodHeight - 2.0;
+
+          return AnimatedPositioned(
+            key: ValueKey(p.course.id),
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            left: leftOffset,
+            top: top,
+            child: AnimatedScale(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              scale: scale,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 300),
+                opacity: opacity,
+                child: CourseCard(
+                  course: p.course,
+                  width: width,
+                  height: height,
+                  stackCount: isTop ? widget.group.length : null,
+                  onTap: () {
+                    if (!isTop) {
+                      setState(() => _topIndex = widget.group.indexOf(p));
+                    } else {
+                      CourseEditBottomSheet.show(widget.parentContext, course: p.course);
+                    }
+                  },
                 ),
               ),
-              const SizedBox(height: Gap.lg),
-              // 操作按钮
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const CourseEditPage(),
-                            settings: RouteSettings(arguments: course),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.edit_outlined, size: 18),
-                      label: const Text('编辑'),
-                    ),
-                  ),
-                  const SizedBox(width: Gap.md),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        provider.deleteCourse(course.id);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('已删除「${course.name}」'),
-                            action: SnackBarAction(
-                              label: '撤销',
-                              onPressed: () => provider.addCourse(course),
-                            ),
-                          ),
-                        );
-                      },
-                      icon: Icon(Icons.delete_outline, size: 18, color: cs.error),
-                      label: Text('删除', style: TextStyle(color: cs.error)),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: cs.error.withValues(alpha: 0.3)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }

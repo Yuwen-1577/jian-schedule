@@ -91,8 +91,8 @@ class ScheduleApp extends StatelessWidget {
           title: '简课表',
           debugShowCheckedModeBanner: false,
           themeMode: settings.themeMode,
-          theme: buildLightTheme(settings.seedColor),
-          darkTheme: buildDarkTheme(settings.seedColor),
+          theme: buildLightTheme(settings.seedColor, useSystemFont: settings.useSystemFont),
+          darkTheme: buildDarkTheme(settings.seedColor, useSystemFont: settings.useSystemFont),
           home: const SchedulePage(),
         );
       },

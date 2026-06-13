@@ -54,6 +54,16 @@ android {
             signingConfig = signingConfigs.getByName("release")
         }
     }
+
+    applicationVariants.all {
+        val variantVersion = versionName
+        outputs.all {
+            val outputImpl = this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            if (outputImpl != null) {
+                outputImpl.outputFileName = "JianSchedule_v${variantVersion}.apk"
+            }
+        }
+    }
 }
 
 flutter {

@@ -109,9 +109,7 @@ class XlsImportService {
         day: course.day,
         startPeriod: course.startPeriod,
         duration: course.duration,
-        startWeek: course.startWeek,
-        endWeek: course.endWeek,
-        weekType: course.weekType,
+        activeWeeks: List.from(course.activeWeeks),
         colorValue: _getCourseColor(course.name, colorMap, finalColorIndex),
       ));
       finalColorIndex++;
@@ -509,9 +507,7 @@ class XlsImportService {
         day: day,
         startPeriod: startPeriod,
         duration: duration,
-        startWeek: wStart,
-        endWeek: wEnd,
-        weekType: wType,
+        activeWeeks: _getWeeksInRange(wStart, wEnd, wType),
         colorValue: _getCourseColor(name, colorMap, colorIndex),
       );
     }
@@ -578,9 +574,7 @@ class XlsImportService {
       day: day,
       startPeriod: startPeriod,
       duration: duration,
-      startWeek: wStart,
-      endWeek: wEnd,
-      weekType: wType,
+      activeWeeks: _getWeeksInRange(wStart, wEnd, wType),
       colorValue: _getCourseColor(name, colorMap, colorIndex),
     );
   }
@@ -597,13 +591,10 @@ class XlsImportService {
       if (mergeMap.containsKey(key)) {
         // 合并周次
         final group = mergeMap[key]!;
-        final weeks = _getWeeksInRange(
-          course.startWeek,
-          course.endWeek,
-          course.weekType,
-        );
-        group.weeks.addAll(weeks);
-        group.weeks.sort();
+        group.weeks.addAll(course.activeWeeks);
+        final uniqueWeeks = group.weeks.toSet().toList()..sort();
+        group.weeks.clear();
+        group.weeks.addAll(uniqueWeeks);
 
         // 保留所有唯一的教室（如果当前为空但新值不为空，则更新）
         if (group.room.isEmpty && course.room.isNotEmpty) {
@@ -611,11 +602,6 @@ class XlsImportService {
         }
       } else {
         // 创建新的合并组
-        final weeks = _getWeeksInRange(
-          course.startWeek,
-          course.endWeek,
-          course.weekType,
-        );
         mergeMap[key] = _MergeGroup(
           name: course.name,
           teacher: course.teacher,
@@ -623,7 +609,7 @@ class XlsImportService {
           day: course.day,
           startPeriod: course.startPeriod,
           duration: course.duration,
-          weeks: weeks,
+          weeks: List.from(course.activeWeeks),
         );
       }
     }
@@ -631,8 +617,6 @@ class XlsImportService {
     // 转换为 Course 列表
     final merged = <Course>[];
     for (final group in mergeMap.values) {
-      final weekInfo = _analyzeWeeks(group.weeks);
-
       merged.add(Course(
         id: '',
         name: group.name,
@@ -641,9 +625,7 @@ class XlsImportService {
         day: group.day,
         startPeriod: group.startPeriod,
         duration: group.duration,
-        startWeek: weekInfo['startWeek']!,
-        endWeek: weekInfo['endWeek']!,
-        weekType: weekInfo['weekType']!,
+        activeWeeks: group.weeks,
         colorValue: 0,
       ));
     }
@@ -662,45 +644,7 @@ class XlsImportService {
     return weeks;
   }
 
-  /// 分析周次范围和类型
-  static Map<String, int> _analyzeWeeks(List<int> weeks) {
-    if (weeks.isEmpty) {
-      return {'startWeek': 1, 'endWeek': 20, 'weekType': 0};
-    }
 
-    weeks.sort();
-    final start = weeks.first;
-    final end = weeks.last;
-
-    // 分析是否为连续范围
-    bool isContinuous = true;
-    for (int i = 1; i < weeks.length; i++) {
-      if (weeks[i] - weeks[i - 1] != 1) {
-        isContinuous = false;
-        break;
-      }
-    }
-
-    // 检查单双周（无论连续与否）
-    bool allOdd = weeks.every((w) => w % 2 == 1);
-    bool allEven = weeks.every((w) => w % 2 == 0);
-    int weekType = allOdd ? 1 : (allEven ? 2 : 0);
-
-    if (isContinuous) {
-      return {
-        'startWeek': start,
-        'endWeek': end,
-        'weekType': weekType,
-      };
-    } else {
-      // 非连续周次，用 startWeek 和 endWeek 表示范围
-      return {
-        'startWeek': start,
-        'endWeek': end,
-        'weekType': weekType,
-      };
-    }
-  }
 
   /// 尝试从一行文本中解析周次信息
   /// 支持格式: "2-6,8-17([全])[01-02节]", "3,5,7([单])[03-04节]", "11(周)" 等

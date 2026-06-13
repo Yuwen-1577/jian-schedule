@@ -17,20 +17,20 @@ const List<String> weekdayShortNames = ['一', '二', '三', '四', '五', '六'
 // 单双周标签
 const List<String> weekTypeNames = ['全周', '单周', '双周'];
 
-// 预设课程颜色
+// 预设课程颜色 (莫兰迪/柔和色系，适合玻璃拟物化)
 const List<int> presetColors = [
-  0xFFE57373, // 红色
-  0xFFFFB74D, // 橙色
-  0xFFFFD54F, // 黄色
-  0xFF81C784, // 绿色
-  0xFF4FC3F7, // 浅蓝
-  0xFF64B5F6, // 蓝色
-  0xFF9575CD, // 紫色
-  0xFFE57399, // 粉色
-  0xFF4DB6AC, // 青色
-  0xFF90A4AE, // 灰色
-  0xFF7986CB, // 靛蓝
-  0xFFA1887F, // 棕色
+  0xFFBDB2B0, // 奶茶/暖灰
+  0xFFC8D6D1, // 柔和灰绿
+  0xFFDCD2C6, // 拿铁色
+  0xFFBAC0CA, // 灰蓝
+  0xFFD5C4C4, // 藕荷色/浅玫瑰
+  0xFFC1D4C7, // 浅薄荷
+  0xFFC4B8C1, // 灰紫
+  0xFFE5DED5, // 浅米色
+  0xFFB9C2B7, // 莫兰迪绿
+  0xFFCCC6C0, // 暖沙色
+  0xFFC8CAD0, // 烟灰蓝
+  0xFFD4CCB8, // 柔和卡其
 ];
 
 // 颜色转 Color

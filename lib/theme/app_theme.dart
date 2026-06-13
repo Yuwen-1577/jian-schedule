@@ -31,7 +31,7 @@ abstract class ScheduleDim {
 }
 
 /// 构建浅色主题
-ThemeData buildLightTheme(Color seed) {
+ThemeData buildLightTheme(Color seed, {bool useSystemFont = false}) {
   final cs = ColorScheme.fromSeed(
     seedColor: seed,
     brightness: Brightness.light,
@@ -39,23 +39,23 @@ ThemeData buildLightTheme(Color seed) {
 
   // 用暖色覆盖 Material 3 默认的冷蓝灰表面
   final warmCs = cs.copyWith(
-    surface: const Color(0xFFFAF9F7),
+    surface: const Color(0xFFFDFDFC), // 米白纸张背景
     surfaceContainerLowest: const Color(0xFFFFFFFF),
-    surfaceContainerLow: const Color(0xFFF5F4F1),
-    surfaceContainer: const Color(0xFFEFEEE9),
-    surfaceContainerHigh: const Color(0xFFE9E7E2),
-    surfaceContainerHighest: const Color(0xFFE3E1DB),
+    surfaceContainerLow: const Color(0xFFF7F6F3),
+    surfaceContainer: const Color(0xFFF2EFEA),
+    surfaceContainerHigh: const Color(0xFFECEAE4),
+    surfaceContainerHighest: const Color(0xFFE6E3DB),
     onSurface: const Color(0xFF1C1B1F),
     onSurfaceVariant: const Color(0xFF6B6B6B),
     outline: const Color(0xFFBDBDBD),
     outlineVariant: const Color(0xFFE0E0E0),
   );
 
-  return _buildTheme(warmCs);
+  return _buildTheme(warmCs, useSystemFont);
 }
 
 /// 构建深色主题
-ThemeData buildDarkTheme(Color seed) {
+ThemeData buildDarkTheme(Color seed, {bool useSystemFont = false}) {
   final cs = ColorScheme.fromSeed(
     seedColor: seed,
     brightness: Brightness.dark,
@@ -74,15 +74,17 @@ ThemeData buildDarkTheme(Color seed) {
     outlineVariant: const Color(0xFF3A3A38),
   );
 
-  return _buildTheme(warmCs);
+  return _buildTheme(warmCs, useSystemFont);
 }
 
-ThemeData _buildTheme(ColorScheme cs) {
+ThemeData _buildTheme(ColorScheme cs, bool useSystemFont) {
   return ThemeData(
     useMaterial3: true,
     colorScheme: cs,
     brightness: cs.brightness,
     scaffoldBackgroundColor: cs.surface,
+    fontFamily: useSystemFont ? null : 'Newsreader',
+    fontFamilyFallback: useSystemFont ? null : const <String>['LXGWWenKai'],
 
     // ── AppBar ──
     appBarTheme: AppBarTheme(
@@ -92,12 +94,21 @@ ThemeData _buildTheme(ColorScheme cs) {
       surfaceTintColor: Colors.transparent,
       backgroundColor: cs.surface,
       foregroundColor: cs.onSurface,
-      titleTextStyle: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: cs.onSurface,
-        letterSpacing: -0.2,
-      ),
+      titleTextStyle: useSystemFont
+          ? TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: cs.onSurface,
+              letterSpacing: -0.2,
+            )
+          : TextStyle(
+              fontFamily: 'Newsreader',
+              fontFamilyFallback: const <String>['LXGWWenKai'],
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: cs.onSurface,
+              letterSpacing: -0.2,
+            ),
     ),
 
     // ── Card ──

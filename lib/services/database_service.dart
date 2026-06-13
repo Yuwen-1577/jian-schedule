@@ -24,7 +24,7 @@ class DatabaseService {
     final path = join(dbPath, 'schedule.db');
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -51,6 +51,7 @@ class DatabaseService {
         startWeek INTEGER DEFAULT 1,
         endWeek INTEGER DEFAULT 20,
         weekType INTEGER DEFAULT 0,
+        activeWeeks TEXT DEFAULT '[]',
         colorValue INTEGER DEFAULT 0xFF4CAF50,
         note TEXT DEFAULT '',
         scheduleSetId TEXT DEFAULT '',
@@ -106,6 +107,11 @@ class DatabaseService {
       // v3: 课程提醒字段
       await db.execute(
           "ALTER TABLE courses ADD COLUMN reminderMinutesBefore INTEGER DEFAULT 15");
+    }
+    if (oldVersion < 4) {
+      // v4: 自定义上课周数
+      await db.execute(
+          "ALTER TABLE courses ADD COLUMN activeWeeks TEXT DEFAULT '[]'");
     }
   }
 
