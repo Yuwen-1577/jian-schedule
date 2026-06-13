@@ -21,7 +21,6 @@ class WeekGrid extends StatelessWidget {
     final timeSlots = provider.timeSlots;
     final showWeekends = context.watch<SettingsProvider>().showWeekends;
     final days = showWeekends ? 7 : 5;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (timeSlots.isEmpty) {
       return const Center(child: Text('请先设置上课时间'));
