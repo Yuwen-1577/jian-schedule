@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../models/course.dart';
 import '../providers/schedule_provider.dart';
+import '../theme/app_theme.dart';
 import '../utils/constants.dart';
 import '../widgets/color_picker.dart';
 
@@ -18,13 +19,11 @@ class _CourseEditPageState extends State<CourseEditPage> {
   Course? _editingCourse;
   bool get _isEditing => _editingCourse != null;
 
-  // 提醒时间选项（分钟）
   static const List<int> _reminderOptions = [0, 5, 10, 15, 30, 60];
   static const List<String> _reminderLabels = [
     '不提醒', '5 分钟前', '10 分钟前', '15 分钟前', '30 分钟前', '1 小时前',
   ];
 
-  // 表单字段
   late TextEditingController _nameCtrl;
   late TextEditingController _roomCtrl;
   late TextEditingController _teacherCtrl;
@@ -113,36 +112,72 @@ class _CourseEditPageState extends State<CourseEditPage> {
     Navigator.pop(context);
   }
 
+  void _delete() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除课程'),
+        content: Text('确定删除「${_nameCtrl.text}」？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              context.read<ScheduleProvider>().deleteCourse(_editingCourse!.id);
+              Navigator.pop(ctx);
+              Navigator.pop(context);
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final maxPeriod = context.read<ScheduleProvider>().maxPeriod;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? '编辑课程' : '添加课程'),
         actions: [
-          TextButton(
-            onPressed: _save,
-            child: const Text('保存'),
-          ),
+          if (_isEditing)
+            IconButton(
+              icon: Icon(Icons.delete_outline, color: cs.error),
+              onPressed: _delete,
+            ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _save,
+        icon: const Icon(Icons.check),
+        label: const Text('保存'),
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.lg, Gap.lg, 100),
           children: [
-            // 课程名
+            // ── 课程名 ──
             TextFormField(
               controller: _nameCtrl,
               decoration: const InputDecoration(
-                labelText: '课程名称 *',
-                prefixIcon: Icon(Icons.book),
-                border: OutlineInputBorder(),
+                labelText: '课程名称',
+                prefixIcon: Icon(Icons.book_outlined),
               ),
-              validator: (v) => (v == null || v.trim().isEmpty) ? '请输入课程名' : null,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? '请输入课程名' : null,
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: Gap.md),
 
-            // 教室 & 教师
+            // ── 教室 & 教师 ──
             Row(
               children: [
                 Expanded(
@@ -151,308 +186,256 @@ class _CourseEditPageState extends State<CourseEditPage> {
                     decoration: const InputDecoration(
                       labelText: '教室',
                       prefixIcon: Icon(Icons.location_on_outlined),
-                      border: OutlineInputBorder(),
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: Gap.md),
                 Expanded(
                   child: TextFormField(
                     controller: _teacherCtrl,
                     decoration: const InputDecoration(
                       labelText: '教师',
                       prefixIcon: Icon(Icons.person_outline),
-                      border: OutlineInputBorder(),
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: Gap.xl),
 
-            // 上课日
-            _buildPickerRow(
-              '上课日',
-              Icons.calendar_today,
-              weekdayNames[_day - 1],
-              () => _showPicker(
-                title: '选择上课日',
-                current: _day - 1,
-                items: weekdayNames,
-                onSelected: (i) => setState(() => _day = i + 1),
-              ),
+            // ── 上课日 ── 横向 Chip，不用弹窗
+            _buildSectionLabel('上课日'),
+            const SizedBox(height: Gap.sm),
+            Wrap(
+              spacing: Gap.sm,
+              children: List.generate(7, (i) {
+                final isSelected = _day == i + 1;
+                return ChoiceChip(
+                  label: Text(weekdayShortNames[i]),
+                  selected: isSelected,
+                  onSelected: (_) => setState(() => _day = i + 1),
+                );
+              }),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: Gap.xl),
 
-            // 开始节次 & 持续节数
+            // ── 节次 ── 开始 + 持续，数字 stepper
+            _buildSectionLabel('节次'),
+            const SizedBox(height: Gap.sm),
             Row(
               children: [
                 Expanded(
-                  child: _buildPickerRow(
-                    '开始节次',
-                    Icons.access_time,
-                    '第$_startPeriod节',
-                    () => _showPicker(
-                      title: '选择开始节次',
-                      current: _startPeriod - 1,
-                      items: List.generate(context.read<ScheduleProvider>().maxPeriod, (i) => '第${i + 1}节'),
-                      onSelected: (i) => setState(() => _startPeriod = i + 1),
-                    ),
+                  child: _buildNumberStepper(
+                    label: '开始',
+                    value: _startPeriod,
+                    min: 1,
+                    max: maxPeriod,
+                    onChanged: (v) => setState(() => _startPeriod = v),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: Gap.md),
                 Expanded(
-                  child: _buildPickerRow(
-                    '持续节数',
-                    Icons.more_time,
-                    '$_duration节',
-                    () => _showPicker(
-                      title: '选择持续节数',
-                      current: _duration - 1,
-                      items: List.generate(8, (i) => '${i + 1}节'),
-                      onSelected: (i) =>
-                          setState(() => _duration = i + 1),
+                  child: _buildNumberStepper(
+                    label: '持续',
+                    value: _duration,
+                    min: 1,
+                    max: 8,
+                    suffix: '节',
+                    onChanged: (v) => setState(() => _duration = v),
+                  ),
+                ),
+                const SizedBox(width: Gap.md),
+                // 预览
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: Gap.md, vertical: Gap.sm + 2),
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainer,
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                  ),
+                  child: Text(
+                    '第$_startPeriod-${_startPeriod + _duration - 1}节',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: Gap.xl),
 
-            // 起止周
+            // ── 周次 ── RangeSlider
+            _buildSectionLabel('周次范围'),
+            const SizedBox(height: Gap.xs),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: _buildPickerRow(
-                    '起始周',
-                    Icons.play_arrow,
-                    '第$_startWeek周',
-                    () => _showPicker(
-                      title: '选择起始周',
-                      current: _startWeek - 1,
-                      items: List.generate(maxWeekCount, (i) => '第${i + 1}周'),
-                      onSelected: (i) =>
-                          setState(() => _startWeek = i + 1),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildPickerRow(
-                    '结束周',
-                    Icons.stop,
-                    '第$_endWeek周',
-                    () => _showPicker(
-                      title: '选择结束周',
-                      current: _endWeek - 1,
-                      items: List.generate(maxWeekCount, (i) => '第${i + 1}周'),
-                      onSelected: (i) =>
-                          setState(() => _endWeek = i + 1),
-                    ),
-                  ),
-                ),
+                Text('第$_startWeek周',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: cs.primary)),
+                Text('第$_endWeek周',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: cs.primary)),
               ],
             ),
-            const SizedBox(height: 10),
-
-            // 单双周
-            _buildSegmentSelector(
-              '周类型',
-              Icons.repeat,
-              weekTypeNames,
-              _weekType,
-              (i) => setState(() => _weekType = i),
+            RangeSlider(
+              values: RangeValues(_startWeek.toDouble(), _endWeek.toDouble()),
+              min: 1,
+              max: maxWeekCount.toDouble(),
+              divisions: maxWeekCount - 1,
+              labels: RangeLabels('$_startWeek', '$_endWeek'),
+              onChanged: (v) => setState(() {
+                _startWeek = v.start.round();
+                _endWeek = v.end.round();
+              }),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: Gap.sm),
 
-            // 颜色选择
-            const Text('课程颜色', style: TextStyle(fontWeight: FontWeight.w500)),
-            const SizedBox(height: 8),
+            // ── 单双周 ── SegmentedButton
+            _buildSectionLabel('周类型'),
+            const SizedBox(height: Gap.sm),
+            SegmentedButton<int>(
+              segments: const [
+                ButtonSegment(value: 0, label: Text('全周')),
+                ButtonSegment(value: 1, label: Text('单周')),
+                ButtonSegment(value: 2, label: Text('双周')),
+              ],
+              selected: {_weekType},
+              onSelectionChanged: (v) => setState(() => _weekType = v.first),
+            ),
+            const SizedBox(height: Gap.xl),
+
+            // ── 颜色 ──
+            _buildSectionLabel('课程颜色'),
+            const SizedBox(height: Gap.sm),
             CourseColorPicker(
               selectedColor: _colorValue,
               onColorSelected: (c) => setState(() => _colorValue = c),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: Gap.xl),
 
-            // 提醒设置
-            _buildPickerRow(
-              '上课提醒',
-              Icons.notifications_outlined,
-              _reminderMinutes == 0 ? '不提醒' : '提前 $_reminderMinutes 分钟',
-              () => _showPicker(
-                title: '提前提醒时间',
-                current: _reminderOptions.indexOf(_reminderMinutes).clamp(0, _reminderOptions.length - 1),
-                items: _reminderLabels,
-                onSelected: (i) =>
-                    setState(() => _reminderMinutes = _reminderOptions[i]),
-              ),
+            // ── 提醒 ──
+            _buildSectionLabel('上课提醒'),
+            const SizedBox(height: Gap.sm),
+            SegmentedButton<int>(
+              segments: [
+                for (int i = 0; i < _reminderOptions.length; i++)
+                  ButtonSegment(
+                    value: _reminderOptions[i],
+                    label: Text(_reminderLabels[i]),
+                  ),
+              ],
+              selected: {_reminderMinutes},
+              onSelectionChanged: (v) =>
+                  setState(() => _reminderMinutes = v.first),
+              showSelectedIcon: false,
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: Gap.xl),
 
-            // 备注
+            // ── 备注 ──
             TextFormField(
               controller: _noteCtrl,
               decoration: const InputDecoration(
                 labelText: '备注',
                 prefixIcon: Icon(Icons.note_outlined),
-                border: OutlineInputBorder(),
               ),
               maxLines: 2,
             ),
-            const SizedBox(height: 20),
-
-            // 删除按钮 (仅编辑模式)
-            if (_isEditing)
-              OutlinedButton.icon(
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('确认删除'),
-                      content: Text('确定要删除课程"${_nameCtrl.text}"吗？'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text('取消'),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            context
-                                .read<ScheduleProvider>()
-                                .deleteCourse(_editingCourse!.id);
-                            Navigator.pop(ctx);
-                            Navigator.pop(context);
-                          },
-                          style: TextButton.styleFrom(foregroundColor: Colors.red),
-                          child: const Text('删除'),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                label: const Text('删除课程', style: TextStyle(color: Colors.red)),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.red),
-                ),
-              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPickerRow(
-      String label, IconData icon, String value, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon, size: 20),
-          border: const OutlineInputBorder(),
-        ),
-        child: Text(value),
+  Widget _buildSectionLabel(String label) {
+    return Text(
+      label,
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        letterSpacing: 0.3,
       ),
     );
   }
 
-  Widget _buildSegmentSelector(
-      String label, IconData icon, List<String> options, int selected, ValueChanged<int> onChanged) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 18, color: Colors.grey[600]),
-            const SizedBox(width: 6),
-            Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Row(
-          children: List.generate(options.length, (i) {
-            final isSelected = i == selected;
-            return Expanded(
-              child: GestureDetector(
-                onTap: () => onChanged(i),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.primary
-                        : null,
-                    border: Border.all(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.grey[400]!,
-                    ),
-                    borderRadius: i == 0
-                        ? const BorderRadius.only(
-                            topLeft: Radius.circular(6),
-                            bottomLeft: Radius.circular(6),
-                          )
-                        : i == options.length - 1
-                            ? const BorderRadius.only(
-                                topRight: Radius.circular(6),
-                                bottomRight: Radius.circular(6),
-                              )
-                            : null,
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    options[i],
-                    style: TextStyle(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.onPrimary
-                          : null,
-                      fontWeight:
-                          isSelected ? FontWeight.w500 : FontWeight.normal,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }),
-        ),
-      ],
-    );
-  }
-
-  void _showPicker({
-    required String title,
-    required int current,
-    required List<String> items,
-    required ValueChanged<int> onSelected,
+  Widget _buildNumberStepper({
+    required String label,
+    required int value,
+    required int min,
+    required int max,
+    String suffix = '',
+    required ValueChanged<int> onChanged,
   }) {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => Container(
-        height: 280,
-        padding: const EdgeInsets.only(top: 8),
-        child: Column(
-          children: [
-            Text(title,
-                style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-            const Divider(),
-            Expanded(
-              child: ListView.builder(
-                itemCount: items.length,
-                itemBuilder: (_, i) => ListTile(
-                  title: Text(items[i]),
-                  trailing: i == current
-                      ? const Icon(Icons.check, color: Colors.blue)
-                      : null,
-                  onTap: () {
-                    onSelected(i);
-                    Navigator.pop(ctx);
-                  },
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: cs.outlineVariant),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+      ),
+      child: Row(
+        children: [
+          _StepperButton(
+            icon: Icons.remove,
+            enabled: value > min,
+            onTap: () => onChanged(value - 1),
+          ),
+          Expanded(
+            child: Column(
+              children: [
+                Text(label,
+                    style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
+                Text(
+                  '$value$suffix',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSurface,
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
+          _StepperButton(
+            icon: Icons.add,
+            enabled: value < max,
+            onTap: () => onChanged(value + 1),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StepperButton extends StatelessWidget {
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _StepperButton({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(AppRadius.sm),
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.sm),
+        child: Icon(
+          icon,
+          size: 18,
+          color: enabled ? cs.onSurface : cs.outlineVariant,
         ),
       ),
     );
