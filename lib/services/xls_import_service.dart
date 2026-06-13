@@ -17,18 +17,25 @@ class XlsImportService {
       throw Exception('文件中没有找到工作表');
     }
 
-    final sheet = excel.tables.values.first;
-    return _parseSheet(sheet);
+    final sheetName = excel.tables.keys.first;
+    final sheet = excel.tables[sheetName]!;
+    return _parseSheet(excel, sheetName, sheet);
   }
 
-  static List<Course> _parseSheet(Sheet sheet) {
+  static List<Course> _parseSheet(Excel excel, String sheetName, Sheet sheet) {
     final rows = sheet.rows;
     if (rows.length < 3) {
       throw Exception('工作表数据不足');
     }
 
-    // 1. 构建二维字符串网格（处理合并单元格）
-    final grid = _buildGridWithMerge(sheet, rows);
+    // 1. 构建二维字符串网格（使用合并单元格 API，失败时降级）
+    List<List<String>> grid;
+    try {
+      grid = _buildGridWithMerge(excel, sheetName, sheet, rows);
+    } catch (e) {
+      debugPrint('合并单元格 API 失败，使用降级方案: $e');
+      grid = _buildGridWithMergeFallback(sheet, rows);
+    }
 
     // 2. 智能表头检测
     final headerInfo = _detectHeader(grid);
@@ -113,22 +120,53 @@ class XlsImportService {
     return result;
   }
 
-  /// 构建二维字符串网格（处理合并单元格）
+  /// 构建二维字符串网格（使用 excel 包的合并单元格 API）
   static List<List<String>> _buildGridWithMerge(
+    Excel excel,
+    String sheetName,
     Sheet sheet,
     List<List<dynamic>> rows,
   ) {
-    final grid = <List<String>>[];
+    // 1. 解析所有合并范围
+    final mergedRanges = <_MergeRange>[];
+    try {
+      final mergedStrings = excel.getMergedCells(sheetName);
+      for (final s in mergedStrings) {
+        final range = _MergeRange.parse(s);
+        if (range != null) mergedRanges.add(range);
+      }
+    } catch (e) {
+      debugPrint('Failed to read merged cells: $e');
+    }
 
+    // 2. 构建 "被合并覆盖的单元格 → 左上角值" 映射
+    final mergeMap = <String, String>{};
+    for (final range in mergedRanges) {
+      // 读取左上角单元格的值
+      String topLeftValue = '';
+      if (range.startRow < rows.length &&
+          range.startCol < rows[range.startRow].length) {
+        topLeftValue = _cellToString(rows[range.startRow][range.startCol]);
+      }
+      // 填充范围内所有单元格
+      for (int r = range.startRow; r <= range.endRow; r++) {
+        for (int c = range.startCol; c <= range.endCol; c++) {
+          if (r == range.startRow && c == range.startCol) continue;
+          mergeMap['$r:$c'] = topLeftValue;
+        }
+      }
+    }
+
+    // 3. 构建网格
+    final grid = <List<String>>[];
     for (int r = 0; r < rows.length; r++) {
       final cells = <String>[];
       for (int c = 0; c < rows[r].length; c++) {
-        // 检查是否在合并单元格区域内
-        final mergeValue = _getMergedCellInfo(sheet, r, c);
-        if (mergeValue != null) {
-          cells.add(mergeValue);
+        final raw = _cellToString(rows[r][c]);
+        if (raw.isEmpty && mergeMap.containsKey('$r:$c')) {
+          cells.add(mergeMap['$r:$c']!);
         } else {
-          cells.add(_cellToString(rows[r][c]));
+          cells.add(raw);
         }
       }
       grid.add(cells);
@@ -137,67 +175,43 @@ class XlsImportService {
     return grid;
   }
 
-  /// 获取合并单元格的值
-  /// 注意: excel 4.0.6 可能不直接暴露 mergedCells API
-  /// 使用安全的降级方案
-  static String? _getMergedCellInfo(Sheet sheet, int row, int col) {
-    // 只在单元格为空时才尝试搜索
-    if (col < sheet.rows[row].length &&
-        _cellToString(sheet.rows[row][col]).isNotEmpty) {
-      return null; // 单元格有值，不需要处理
-    }
-
-    try {
-      // excel 4.0.6 的合并单元格处理
-      // 由于 API 限制，这里采用简化处理:
-      // 如果单元格为空但不是边缘，可能是合并单元格的一部分
-      // 尝试从左边或上边查找值
-
-      // 向左搜索（同一行）
-      for (int c = col - 1; c >= 0; c--) {
-        if (c < sheet.rows[row].length) {
-          final value = _cellToString(sheet.rows[row][c]);
-          if (value.isNotEmpty) {
-            // 检查这个值是否跨越多列（简单的启发式）
-            // 如果右边的单元格都为空，可能是合并单元格
-            bool allRightEmpty = true;
-            for (int nc = c + 1; nc <= col && nc < sheet.rows[row].length; nc++) {
-              if (_cellToString(sheet.rows[row][nc]).isNotEmpty) {
-                allRightEmpty = false;
+  /// 合并范围数据类
+  static List<List<String>> _buildGridWithMergeFallback(
+    Sheet sheet,
+    List<List<dynamic>> rows,
+  ) {
+    // 降级方案：启发式检测（当 API 不可用时）
+    final grid = <List<String>>[];
+    for (int r = 0; r < rows.length; r++) {
+      final cells = <String>[];
+      for (int c = 0; c < rows[r].length; c++) {
+        final raw = _cellToString(rows[r][c]);
+        if (raw.isEmpty) {
+          // 向左搜索同行
+          for (int lc = c - 1; lc >= 0; lc--) {
+            final leftVal = _cellToString(rows[r][lc]);
+            if (leftVal.isNotEmpty) {
+              bool allBetweenEmpty = true;
+              for (int mc = lc + 1; mc < c; mc++) {
+                if (_cellToString(rows[r][mc]).isNotEmpty) {
+                  allBetweenEmpty = false;
+                  break;
+                }
+              }
+              if (allBetweenEmpty) {
+                cells.add(leftVal);
                 break;
               }
             }
-            if (allRightEmpty) {
-              return value;
-            }
           }
+          if (cells.length == c) cells.add('');
+        } else {
+          cells.add(raw);
         }
       }
-
-      // 向上搜索（同一列）
-      for (int r = row - 1; r >= 0; r--) {
-        if (col < sheet.rows[r].length) {
-          final value = _cellToString(sheet.rows[r][col]);
-          if (value.isNotEmpty) {
-            // 检查这个值是否跨越多行
-            bool allBelowEmpty = true;
-            for (int nr = r + 1; nr <= row && nr < sheet.rows.length; nr++) {
-              if (col < sheet.rows[nr].length &&
-                  _cellToString(sheet.rows[nr][col]).isNotEmpty) {
-                allBelowEmpty = false;
-                break;
-              }
-            }
-            if (allBelowEmpty) {
-              return value;
-            }
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Failed to extract merged cell value: $e');
+      grid.add(cells);
     }
-    return null;
+    return grid;
   }
 
   /// 智能表头检测
@@ -420,15 +434,10 @@ class XlsImportService {
     final courses = <Course>[];
     List<String> blocks = [];
 
-    // 策略1: 双换行分割
+    // 策略1: 双换行分割（最可靠 — 课程之间通常有空行）
     blocks = text.split(RegExp(r'\n\s*\n'));
 
-    // 策略2: 如果双换行没结果，尝试换行 + 空格开头
-    if (blocks.every((b) => b.trim().isEmpty) || blocks.length == 1) {
-      blocks = text.split(RegExp(r'\n(?=\S)'));
-    }
-
-    // 策略3: 如果还没结果，尝试特殊分隔符
+    // 策略2: 如果只有一块，尝试用管道符分割（多课程挤在同一单元格）
     if (blocks.length == 1 && blocks[0].contains(RegExp(r'[|│/／]'))) {
       blocks = text.split(RegExp(r'[|│/／]'));
     }
@@ -818,6 +827,34 @@ class _WeekdayPos {
   final int col;
   final int weekday;
   const _WeekdayPos(this.row, this.col, this.weekday);
+}
+
+class _MergeRange {
+  final int startRow, startCol, endRow, endCol;
+  const _MergeRange(this.startRow, this.startCol, this.endRow, this.endCol);
+
+  /// 解析 "A1:B3" 格式的合并范围
+  static _MergeRange? parse(String range) {
+    final parts = range.split(':');
+    if (parts.length != 2) return null;
+    final start = _parseCellRef(parts[0].trim());
+    final end = _parseCellRef(parts[1].trim());
+    if (start == null || end == null) return null;
+    return _MergeRange(start[0], start[1], end[0], end[1]);
+  }
+
+  /// 解析 "A1" → [row, col]（0-based）
+  static List<int>? _parseCellRef(String ref) {
+    final match = RegExp(r'^([A-Z]+)(\d+)$').firstMatch(ref.toUpperCase());
+    if (match == null) return null;
+    final colStr = match.group(1)!;
+    final rowStr = match.group(2)!;
+    int col = 0;
+    for (int i = 0; i < colStr.length; i++) {
+      col = col * 26 + (colStr.codeUnitAt(i) - 64);
+    }
+    return [int.parse(rowStr) - 1, col - 1];
+  }
 }
 
 class _MergeGroup {
