@@ -323,18 +323,19 @@ class _CourseEditPageState extends State<CourseEditPage> {
             // ── 提醒 ──
             _buildSectionLabel('上课提醒'),
             const SizedBox(height: Gap.sm),
-            SegmentedButton<int>(
-              segments: [
-                for (int i = 0; i < _reminderOptions.length; i++)
-                  ButtonSegment(
-                    value: _reminderOptions[i],
-                    label: Text(_reminderLabels[i]),
-                  ),
-              ],
-              selected: {_reminderMinutes},
-              onSelectionChanged: (v) =>
-                  setState(() => _reminderMinutes = v.first),
-              showSelectedIcon: false,
+            InkWell(
+              onTap: () => _showReminderPicker(),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              child: InputDecorator(
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.notifications_outlined),
+                ),
+                child: Text(
+                  _reminderMinutes == 0
+                      ? '不提醒'
+                      : '提前 $_reminderMinutes 分钟',
+                ),
+              ),
             ),
             const SizedBox(height: Gap.xl),
 
@@ -347,6 +348,36 @@ class _CourseEditPageState extends State<CourseEditPage> {
               ),
               maxLines: 2,
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showReminderPicker() {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(Gap.lg),
+              child: Text('提前提醒时间',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            ),
+            for (int i = 0; i < _reminderOptions.length; i++)
+              ListTile(
+                title: Text(_reminderLabels[i]),
+                trailing: _reminderMinutes == _reminderOptions[i]
+                    ? Icon(Icons.check,
+                        color: Theme.of(context).colorScheme.primary)
+                    : null,
+                onTap: () {
+                  setState(() => _reminderMinutes = _reminderOptions[i]);
+                  Navigator.pop(ctx);
+                },
+              ),
           ],
         ),
       ),
