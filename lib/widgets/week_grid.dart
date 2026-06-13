@@ -219,49 +219,96 @@ class _GridBody extends StatelessWidget {
   }
 
   void _onCourseLongPress(BuildContext context, Course course) {
-    showDialog(
+    final cs = Theme.of(context).colorScheme;
+    final bgColor = intToColor(course.colorValue);
+
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('操作课程'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(course.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-            if (course.room.isNotEmpty) Text('教室: ${course.room}'),
-            if (course.teacher.isNotEmpty) Text('教师: ${course.teacher}'),
-            Text('${weekdayNames[course.day - 1]} ${course.startPeriod}-${course.endPeriod}节'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const CourseEditPage(),
-                  settings: RouteSettings(arguments: course),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.lg, Gap.lg, Gap.xl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 课程详情卡片
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(Gap.lg),
+                decoration: BoxDecoration(
+                  color: bgColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-              );
-            },
-            child: const Text('编辑'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(course.name,
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: cs.onSurface)),
+                    const SizedBox(height: Gap.sm),
+                    if (course.room.isNotEmpty)
+                      Text('教室: ${course.room}',
+                          style: TextStyle(color: cs.onSurfaceVariant)),
+                    if (course.teacher.isNotEmpty)
+                      Text('教师: ${course.teacher}',
+                          style: TextStyle(color: cs.onSurfaceVariant)),
+                    Text(
+                      '${weekdayNames[course.day - 1]} 第${course.startPeriod}-${course.endPeriod}节 · 第${course.startWeek}-${course.endWeek}周',
+                      style: TextStyle(color: cs.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: Gap.lg),
+              // 操作按钮
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const CourseEditPage(),
+                            settings: RouteSettings(arguments: course),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: const Text('编辑'),
+                    ),
+                  ),
+                  const SizedBox(width: Gap.md),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        provider.deleteCourse(course.id);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('已删除「${course.name}」'),
+                            action: SnackBarAction(
+                              label: '撤销',
+                              onPressed: () => provider.addCourse(course),
+                            ),
+                          ),
+                        );
+                      },
+                      icon: Icon(Icons.delete_outline, size: 18, color: cs.error),
+                      label: Text('删除', style: TextStyle(color: cs.error)),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: cs.error.withValues(alpha: 0.3)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              provider.deleteCourse(course.id);
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: const Text('删除'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消'),
-          ),
-        ],
+        ),
       ),
     );
   }

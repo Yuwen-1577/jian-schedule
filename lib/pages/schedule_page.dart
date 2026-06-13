@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/schedule_provider.dart';
+import '../theme/app_theme.dart';
 import '../utils/constants.dart';
 import '../widgets/week_grid.dart';
 import '../widgets/today_courses.dart';
@@ -58,28 +59,13 @@ class _SchedulePageState extends State<SchedulePage> {
       appBar: AppBar(
         title: GestureDetector(
           onTap: () {
-            // 回到本周
             _pageController.animateToPage(
               provider.currentWeek - 1,
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
             );
           },
-          child: Column(
-            children: [
-              Text(titleStr, style: const TextStyle(fontSize: 16)),
-              if (provider.scheduleSets.length > 1)
-                Text(
-                  provider.activeSet?.name ?? '',
-                  style: TextStyle(
-                      fontSize: 11,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.6)),
-                ),
-            ],
-          ),
+          child: Text(titleStr, style: const TextStyle(fontSize: 16)),
         ),
         actions: [
           IconButton(
@@ -88,60 +74,33 @@ class _SchedulePageState extends State<SchedulePage> {
             onPressed: () async {
               await Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const CourseEditPage(),
-                ),
+                MaterialPageRoute(builder: (_) => const CourseEditPage()),
               );
             },
           ),
           PopupMenuButton<String>(
             onSelected: (value) {
-              if (value == 'time') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const TimeSettingPage()),
-                );
-              } else if (value == 'settings') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SettingsPage()),
-                );
-              } else if (value == 'today') {
+              if (value == 'today') {
                 Scaffold.of(context).openEndDrawer();
+              } else if (value == 'time') {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const TimeSettingPage()));
+              } else if (value == 'settings') {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const SettingsPage()));
               } else if (value == 'manage_sets') {
                 Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const ScheduleSetManagePage()),
-                );
-              } else if (value.startsWith('set:')) {
-                provider.switchSet(value.substring(4));
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const ScheduleSetManagePage()));
               }
             },
             itemBuilder: (context) => [
               const PopupMenuItem(value: 'today', child: Text('今日课程')),
               const PopupMenuItem(value: 'time', child: Text('时间设置')),
               const PopupMenuItem(value: 'settings', child: Text('设置')),
-              if (provider.scheduleSets.isNotEmpty) ...[
-                const PopupMenuDivider(),
-                ...provider.scheduleSets.map((set) => PopupMenuItem(
-                      value: 'set:${set.id}',
-                      child: Row(
-                        children: [
-                          if (set.id == provider.activeSetId)
-                            Icon(Icons.check,
-                                size: 18,
-                                color:
-                                    Theme.of(context).colorScheme.primary),
-                          if (set.id == provider.activeSetId)
-                            const SizedBox(width: 8),
-                          Text(set.name),
-                        ],
-                      ),
-                    )),
-                const PopupMenuItem(
-                    value: 'manage_sets', child: Text('管理课表集...')),
-              ],
+              const PopupMenuItem(
+                  value: 'manage_sets', child: Text('管理课表集')),
             ],
           ),
         ],
@@ -181,6 +140,31 @@ class _SchedulePageState extends State<SchedulePage> {
       ),
       body: Column(
         children: [
+          // 课表集切换 Chip（多集时显示）
+          if (provider.scheduleSets.length > 1)
+            Container(
+              height: 40,
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: Gap.md),
+                itemCount: provider.scheduleSets.length,
+                itemBuilder: (context, index) {
+                  final set = provider.scheduleSets[index];
+                  final isActive = set.id == provider.activeSetId;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: Gap.sm),
+                    child: Center(
+                      child: ChoiceChip(
+                        label: Text(set.name),
+                        selected: isActive,
+                        onSelected: (_) => provider.switchSet(set.id),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
           // 周次快速切换条
           Container(
             height: 36,
