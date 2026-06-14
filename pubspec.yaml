@@ -34,9 +34,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   fonts:
-    - family: NotoSerifSC
-      fonts:
-        - asset: assets/fonts/NotoSerifSC-VF.ttf
     - family: Newsreader
       fonts:
         - asset: assets/fonts/Newsreader.ttf
