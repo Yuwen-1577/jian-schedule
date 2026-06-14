@@ -1,7 +1,7 @@
 name: simple_schedule
 description: 简课表 - 跨平台课程表管理应用
 publish_to: 'none'
-version: 2.3.0+20
+version: 2.5.0+22
 
 environment:
   sdk: '>=3.11.0 <4.0.0'
@@ -24,6 +24,8 @@ dependencies:
   timezone: ^0.9.0
   package_info_plus: ^8.0.2
   google_fonts: ^6.2.1
+  sqflite_common_ffi: ^2.4.0+3
+  http: ^1.2.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -32,6 +34,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   fonts:
+    - family: NotoSerifSC
+      fonts:
+        - asset: assets/fonts/NotoSerifSC-VF.ttf
     - family: Newsreader
       fonts:
         - asset: assets/fonts/Newsreader.ttf

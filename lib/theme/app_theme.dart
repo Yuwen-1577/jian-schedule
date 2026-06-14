@@ -88,7 +88,7 @@ ThemeData _buildTheme(ColorScheme cs, bool useSystemFont) {
 
     // ── AppBar ──
     appBarTheme: AppBarTheme(
-      centerTitle: true,
+      centerTitle: false,
       elevation: 0,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,

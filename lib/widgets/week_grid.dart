@@ -29,24 +29,37 @@ class WeekGrid extends StatelessWidget {
     final periodHeight = ScheduleDim.periodHeight;
     final availWidth = MediaQuery.of(context).size.width - ScheduleDim.timeColumnWidth;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final semesterStart = provider.semesterStart;
+    final monday = semesterStart.add(Duration(days: (week - 1) * 7));
+    final month = monday.month;
+
+    return Column(
       children: [
-        TimeColumn(timeSlots: timeSlots, periodHeight: periodHeight),
+        // 固定的顶部表头
+        Row(
+          children: [
+            _CornerHeader(month: month),
+            Expanded(child: _DayHeader(days: days)),
+          ],
+        ),
+        // 可随主体滚动的课表与时间轴
         Expanded(
           child: SingleChildScrollView(
-            child: Column(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _DayHeader(days: days),
-                SizedBox(
-                  height: periodHeight * timeSlots.length,
-                  child: _GridBody(
-                    week: week,
-                    days: days,
-                    timeSlots: timeSlots,
-                    periodHeight: periodHeight,
-                    availWidth: availWidth,
-                    provider: provider,
+                TimeColumn(timeSlots: timeSlots, periodHeight: periodHeight),
+                Expanded(
+                  child: SizedBox(
+                    height: periodHeight * timeSlots.length,
+                    child: _GridBody(
+                      week: week,
+                      days: days,
+                      timeSlots: timeSlots,
+                      periodHeight: periodHeight,
+                      availWidth: availWidth,
+                      provider: provider,
+                    ),
                   ),
                 ),
               ],
@@ -54,6 +67,35 @@ class WeekGrid extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _CornerHeader extends StatelessWidget {
+  final int month;
+  const _CornerHeader({required this.month});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      width: ScheduleDim.timeColumnWidth,
+      height: ScheduleDim.dayHeaderHeight,
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest,
+        border: Border(
+          bottom: BorderSide(color: cs.outlineVariant, width: 0.5),
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        '$month月',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: cs.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }

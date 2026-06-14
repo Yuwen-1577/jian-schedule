@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/course.dart';
@@ -59,6 +61,21 @@ class ScheduleProvider extends ChangeNotifier {
   void recalculateWeek() {
     _currentWeek = calculateCurrentWeek(_semesterStart);
     notifyListeners();
+  }
+
+  /// 获取指定 DateTime 对应的课程列表
+  /// 自动计算该日期对应的教学周和星期几
+  List<Course> getCoursesForDate(DateTime date) {
+    final week = calculateWeekForDate(date);
+    final day = date.weekday; // 1=Mon
+    return getCoursesForDay(week, day);
+  }
+
+  /// 计算指定日期对应的教学周
+  int calculateWeekForDate(DateTime date) {
+    final diff = date.difference(_semesterStart).inDays;
+    final week = (diff / 7).ceil();
+    return week.clamp(1, maxWeekCount);
   }
 
   // 切换周次
@@ -251,6 +268,7 @@ class ScheduleProvider extends ChangeNotifier {
 
   // 同步桌面小部件数据
   Future<void> _syncWidgetData() async {
+    if (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) return;
     try {
       // 同步学期开始日期（小部件用于计算当前教学周）
       await WidgetService.syncSemesterStart(_semesterStart);
@@ -272,6 +290,7 @@ class ScheduleProvider extends ChangeNotifier {
 
   // 调度课程提醒通知
   Future<void> _scheduleNotifications() async {
+    if (kIsWeb || !(Platform.isAndroid || Platform.isIOS || Platform.isMacOS)) return;
     try {
       await NotificationService().scheduleWeeklyReminders(
         courses: _courses,

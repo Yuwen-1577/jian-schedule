@@ -11,6 +11,7 @@ import 'package:path/path.dart' as p;
 import '../providers/schedule_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/xls_import_service.dart';
+import '../services/ocr_import_service.dart';
 import '../utils/constants.dart';
 import 'about_page.dart';
 
@@ -261,19 +262,11 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  leading: Icon(Icons.camera_alt_outlined,
-                      color: Colors.grey[500]),
-                  title: Text('从截图导入',
-                      style: TextStyle(color: Colors.grey[500])),
-                  subtitle: const Text('即将推出，敬请期待'),
+                  leading: const Icon(Icons.camera_alt_outlined),
+                  title: const Text('从截图导入 (OCR)'),
+                  subtitle: const Text('支持智能识别课表截图并导入'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('截图导入功能正在开发中，敬请期待！'),
-                      ),
-                    );
-                  },
+                  onTap: () => _importFromOcr(provider, settings),
                 ),
                 const Divider(height: 1),
                 ListTile(
@@ -283,6 +276,42 @@ class _SettingsPageState extends State<SettingsPage> {
                       style: TextStyle(color: Colors.red)),
                   subtitle: const Text('将删除所有课程数据'),
                   onTap: () => _clearAllData(provider),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // === OCR 大模型配置 ===
+          _buildSectionTitle('OCR 大模型配置'),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.help_outline, color: Colors.blue),
+                  title: const Text('如何获取免费的 API Key？', style: TextStyle(color: Colors.blue)),
+                  onTap: () => _showApiTutorial(context),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  title: const Text('API Base URL'),
+                  subtitle: Text(settings.ocrApiUrl.isEmpty ? '未设置' : settings.ocrApiUrl),
+                  trailing: const Icon(Icons.edit, size: 18),
+                  onTap: () => _editOcrConfig('API Base URL', settings.ocrApiUrl, settings.setOcrApiUrl),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  title: const Text('API Key'),
+                  subtitle: Text(settings.ocrApiKey.isEmpty ? '未设置' : '••••••••'),
+                  trailing: const Icon(Icons.edit, size: 18),
+                  onTap: () => _editOcrConfig('API Key', settings.ocrApiKey, settings.setOcrApiKey, isPassword: true),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  title: const Text('Model Name'),
+                  subtitle: Text(settings.ocrModelName),
+                  trailing: const Icon(Icons.edit, size: 18),
+                  onTap: () => _editOcrConfig('Model Name', settings.ocrModelName, settings.setOcrModelName),
                 ),
               ],
             ),
@@ -663,6 +692,151 @@ class _SettingsPageState extends State<SettingsPage> {
         _showError('导入失败: $e');
       }
     }
+  }
+
+  void _importFromOcr(ScheduleProvider provider, SettingsProvider settings) async {
+    try {
+      if (settings.ocrApiKey.isEmpty) {
+        _showError('请先配置 OCR 大模型 API Key');
+        return;
+      }
+
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+      );
+      if (result == null || result.files.isEmpty) return;
+
+      final filePath = result.files.first.path;
+      if (filePath == null) return;
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Expanded(child: Text("正在调用视觉大模型分析课表结构...")),
+            ],
+          ),
+        ),
+      );
+
+      final courses = await OcrImportService.parseImage(
+        filePath,
+        settings.ocrApiUrl,
+        settings.ocrApiKey,
+        settings.ocrModelName,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // 关闭加载
+
+      if (courses.isEmpty) {
+        _showError('未识别到任何课程');
+        return;
+      }
+
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('导入截图课表'),
+          content: Text('AI 成功识别到 ${courses.length} 门课程，是否追加到当前课表集？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('导入'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true) {
+        await provider.importCoursesToActiveSet(courses);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('成功导入 ${courses.length} 门课程')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // 关闭加载（如果还在）
+        _showError('识别失败: $e');
+      }
+    }
+  }
+
+  void _editOcrConfig(String title, String initialValue, Function(String) onSave, {bool isPassword = false}) {
+    final controller = TextEditingController(text: initialValue);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('修改 $title'),
+        content: TextField(
+          controller: controller,
+          obscureText: isPassword,
+          decoration: InputDecoration(
+            hintText: '请输入 $title',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              onSave(controller.text.trim());
+              Navigator.pop(ctx);
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showApiTutorial(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('获取 API Key 教程'),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('推荐使用阿里云的【通义千问】，国内访问速度快，表格识别能力极强，且新用户赠送海量免费额度。', style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: 12),
+              Text('1. 浏览器访问 dashscope.aliyun.com 并登录（支持支付宝快速登录）。'),
+              SizedBox(height: 4),
+              Text('2. 在百炼控制台的左侧菜单找到「API-KEY 管理」。'),
+              SizedBox(height: 4),
+              Text('3. 点击「创建新的 API-KEY」，将生成的一串字符（通常以 sk- 开头）复制下来。'),
+              SizedBox(height: 4),
+              Text('4. 将这串字符粘贴到下方的「API Key」设置项中。'),
+              SizedBox(height: 4),
+              Text('5. 默认的 API Base URL 和 Model Name 已经为您预设好兼容阿里模型的参数，无需修改即可直接使用。'),
+              SizedBox(height: 16),
+              Text('注：如果你使用 OpenAI 或者其他兼容格式的中转站，请对应修改 URL 和模型名称。', style: TextStyle(color: Colors.grey, fontSize: 12)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('明白了'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showError(String msg) {

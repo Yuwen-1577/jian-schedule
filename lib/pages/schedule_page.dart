@@ -20,6 +20,7 @@ class SchedulePage extends StatefulWidget {
 }
 
 class _SchedulePageState extends State<SchedulePage> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late PageController _pageController;
   late ScrollController _weekScrollController;
 
@@ -58,18 +59,68 @@ class _SchedulePageState extends State<SchedulePage> {
     }
 
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
+        centerTitle: false,
         title: GestureDetector(
           onTap: () {
+            final realWeek = provider.calculateWeekForDate(DateTime.now());
+            provider.setWeek(realWeek);
             _pageController.animateToPage(
-              provider.currentWeek - 1,
+              realWeek - 1,
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
             );
+            _syncWeekScroll(realWeek);
           },
-          child: Text(titleStr, style: const TextStyle(fontSize: 16)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${now.year}/${now.month}/${now.day}',
+                style: const TextStyle(
+                  fontFamily: 'LXGWWenKai',
+                  fontSize: 22, 
+                  fontWeight: FontWeight.w600, 
+                  letterSpacing: 0.5,
+                ),
+              ),
+              Text(
+                '第$currentWeek周 周${weekdayShortNames[now.weekday - 1]}',
+                style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
+            ],
+          ),
         ),
         actions: [
+          if (provider.scheduleSets.length > 1)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.layers_outlined),
+              tooltip: '切换课表集',
+              onSelected: (id) => provider.switchSet(id),
+              itemBuilder: (context) {
+                return provider.scheduleSets.map((set) {
+                  return PopupMenuItem(
+                    value: set.id,
+                    child: Row(
+                      children: [
+                        if (set.id == provider.activeSetId)
+                          Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.primary)
+                        else
+                          const SizedBox(width: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          set.name,
+                          style: TextStyle(
+                            fontWeight: set.id == provider.activeSetId ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList();
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.add),
             tooltip: '添加课程',
@@ -77,10 +128,29 @@ class _SchedulePageState extends State<SchedulePage> {
               await CourseEditBottomSheet.show(context);
             },
           ),
+          IconButton(
+            icon: const Icon(Icons.file_download_outlined),
+            tooltip: '从 Excel 导入',
+            onPressed: () => _importFromExcel(provider),
+          ),
+          IconButton(
+            icon: const Icon(Icons.redo),
+            tooltip: '回到当前周',
+            onPressed: () {
+              final realWeek = provider.calculateWeekForDate(DateTime.now());
+              provider.setWeek(realWeek);
+              _pageController.animateToPage(
+                realWeek - 1,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
+              _syncWeekScroll(realWeek);
+            },
+          ),
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'today') {
-                Scaffold.of(context).openEndDrawer();
+                _scaffoldKey.currentState?.openEndDrawer();
               } else if (value == 'time') {
                 Navigator.push(context,
                     MaterialPageRoute(builder: (_) => const TimeSettingPage()));
@@ -92,13 +162,10 @@ class _SchedulePageState extends State<SchedulePage> {
                     context,
                     MaterialPageRoute(
                         builder: (_) => const ScheduleSetManagePage()));
-              } else if (value == 'import_excel') {
-                _importFromExcel(provider);
               }
             },
             itemBuilder: (context) => [
               const PopupMenuItem(value: 'today', child: Text('今日课程')),
-              const PopupMenuItem(value: 'import_excel', child: Text('从 Excel 导入')),
               const PopupMenuItem(value: 'time', child: Text('时间设置')),
               const PopupMenuItem(value: 'settings', child: Text('设置')),
               const PopupMenuItem(
@@ -142,31 +209,6 @@ class _SchedulePageState extends State<SchedulePage> {
       ),
       body: Column(
         children: [
-          // 课表集切换 Chip（多集时显示）
-          if (provider.scheduleSets.length > 1)
-            Container(
-              height: 40,
-              color: Theme.of(context).colorScheme.surfaceContainerLow,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: Gap.md),
-                itemCount: provider.scheduleSets.length,
-                itemBuilder: (context, index) {
-                  final set = provider.scheduleSets[index];
-                  final isActive = set.id == provider.activeSetId;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: Gap.sm),
-                    child: Center(
-                      child: ChoiceChip(
-                        label: Text(set.name),
-                        selected: isActive,
-                        onSelected: (_) => provider.switchSet(set.id),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
           // 周次快速切换条
           Container(
             height: 36,

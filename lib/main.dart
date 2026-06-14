@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'providers/schedule_provider.dart';
 import 'providers/settings_provider.dart';
 import 'services/database_service.dart';
@@ -9,10 +11,16 @@ import 'services/notification_service.dart';
 import 'services/widget_service.dart';
 import 'theme/app_theme.dart';
 import 'utils/constants.dart';
-import 'pages/schedule_page.dart';
+import 'pages/home_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Windows / Linux 需要专门初始化 sqflite
+  if (Platform.isWindows || Platform.isLinux) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
 
   // 注册桌面小部件背景回调
   HomeWidget.registerInteractivityCallback(backgroundCallback);
@@ -93,7 +101,7 @@ class ScheduleApp extends StatelessWidget {
           themeMode: settings.themeMode,
           theme: buildLightTheme(settings.seedColor, useSystemFont: settings.useSystemFont),
           darkTheme: buildDarkTheme(settings.seedColor, useSystemFont: settings.useSystemFont),
-          home: const SchedulePage(),
+          home: const HomePage(),
         );
       },
     );
