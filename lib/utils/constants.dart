@@ -45,7 +45,11 @@ DateTime get defaultSemesterStart {
   final now = DateTime.now();
   // 往前推到最近的周一
   final daysFromMonday = now.weekday - 1;
-  return DateTime(now.year, now.month, now.day).subtract(Duration(days: daysFromMonday));
+  return DateTime(
+    now.year,
+    now.month,
+    now.day,
+  ).subtract(Duration(days: daysFromMonday));
 }
 
 // 计算当前教学周

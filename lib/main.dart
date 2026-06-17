@@ -75,8 +75,7 @@ Future<void> backgroundCallback(Uri? uri) async {
       if (c.day != today) return false;
       if (!c.isActiveInWeek(currentWeek)) return false;
       return true;
-    }).toList()
-      ..sort((a, b) => a.startPeriod.compareTo(b.startPeriod));
+    }).toList()..sort((a, b) => a.startPeriod.compareTo(b.startPeriod));
 
     // 同步三种 Widget
     await WidgetService.syncTodayCourses(todayCourses, timeSlots);
@@ -99,8 +98,14 @@ class ScheduleApp extends StatelessWidget {
           title: '简课表',
           debugShowCheckedModeBanner: false,
           themeMode: settings.themeMode,
-          theme: buildLightTheme(settings.seedColor, useSystemFont: settings.useSystemFont),
-          darkTheme: buildDarkTheme(settings.seedColor, useSystemFont: settings.useSystemFont),
+          theme: buildLightTheme(
+            settings.seedColor,
+            useSystemFont: settings.useSystemFont,
+          ),
+          darkTheme: buildDarkTheme(
+            settings.seedColor,
+            useSystemFont: settings.useSystemFont,
+          ),
           home: const HomePage(),
         );
       },

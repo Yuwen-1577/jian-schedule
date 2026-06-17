@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../providers/schedule_provider.dart';
-import '../services/xls_import_service.dart';
+import '../services/excel_import_helper.dart';
 import '../theme/app_theme.dart';
 import '../utils/constants.dart';
 import '../widgets/week_grid.dart';
@@ -53,9 +53,7 @@ class _SchedulePageState extends State<SchedulePage> {
     String titleStr = '$dateStr 第$currentWeek周 $weekDayStr';
 
     if (!provider.initialized) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -80,14 +78,17 @@ class _SchedulePageState extends State<SchedulePage> {
                 '${now.year}/${now.month}/${now.day}',
                 style: const TextStyle(
                   fontFamily: 'LXGWWenKai',
-                  fontSize: 22, 
-                  fontWeight: FontWeight.w600, 
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
                   letterSpacing: 0.5,
                 ),
               ),
               Text(
                 '第$currentWeek周 周${weekdayShortNames[now.weekday - 1]}',
-                style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -105,14 +106,20 @@ class _SchedulePageState extends State<SchedulePage> {
                     child: Row(
                       children: [
                         if (set.id == provider.activeSetId)
-                          Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.primary)
+                          Icon(
+                            Icons.check,
+                            size: 18,
+                            color: Theme.of(context).colorScheme.primary,
+                          )
                         else
                           const SizedBox(width: 18),
                         const SizedBox(width: 8),
                         Text(
                           set.name,
                           style: TextStyle(
-                            fontWeight: set.id == provider.activeSetId ? FontWeight.bold : FontWeight.normal,
+                            fontWeight: set.id == provider.activeSetId
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                         ),
                       ],
@@ -131,7 +138,8 @@ class _SchedulePageState extends State<SchedulePage> {
           IconButton(
             icon: const Icon(Icons.file_download_outlined),
             tooltip: '从 Excel 导入',
-            onPressed: () => _importFromExcel(provider),
+            onPressed: () =>
+                ExcelImportHelper.importFromExcel(context, provider),
           ),
           IconButton(
             icon: const Icon(Icons.redo),
@@ -152,24 +160,29 @@ class _SchedulePageState extends State<SchedulePage> {
               if (value == 'today') {
                 _scaffoldKey.currentState?.openEndDrawer();
               } else if (value == 'time') {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const TimeSettingPage()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const TimeSettingPage()),
+                );
               } else if (value == 'settings') {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const SettingsPage()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsPage()),
+                );
               } else if (value == 'manage_sets') {
                 Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const ScheduleSetManagePage()));
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ScheduleSetManagePage(),
+                  ),
+                );
               }
             },
             itemBuilder: (context) => [
               const PopupMenuItem(value: 'today', child: Text('今日课程')),
               const PopupMenuItem(value: 'time', child: Text('时间设置')),
               const PopupMenuItem(value: 'settings', child: Text('设置')),
-              const PopupMenuItem(
-                  value: 'manage_sets', child: Text('管理课表集')),
+              const PopupMenuItem(value: 'manage_sets', child: Text('管理课表集')),
             ],
           ),
         ],
@@ -191,8 +204,10 @@ class _SchedulePageState extends State<SchedulePage> {
                   children: [
                     const Text(
                       '今日课程',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const Spacer(),
                     IconButton(
@@ -233,7 +248,8 @@ class _SchedulePageState extends State<SchedulePage> {
                 Expanded(
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    itemCount: maxWeekCount,                    controller: _weekScrollController,
+                    itemCount: maxWeekCount,
+                    controller: _weekScrollController,
                     itemBuilder: (context, index) {
                       final week = index + 1;
                       final isCurrent = week == currentWeek;
@@ -250,7 +266,9 @@ class _SchedulePageState extends State<SchedulePage> {
                         child: Container(
                           width: 42,
                           margin: const EdgeInsets.symmetric(
-                              horizontal: 2, vertical: 4),
+                            horizontal: 2,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: isCurrent
                                 ? Theme.of(context).colorScheme.primary
@@ -262,8 +280,9 @@ class _SchedulePageState extends State<SchedulePage> {
                             '$week',
                             style: TextStyle(
                               fontSize: 13,
-                              fontWeight:
-                                  isCurrent ? FontWeight.bold : FontWeight.normal,
+                              fontWeight: isCurrent
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                               color: isCurrent
                                   ? Theme.of(context).colorScheme.onPrimary
                                   : null,
@@ -319,73 +338,6 @@ class _SchedulePageState extends State<SchedulePage> {
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
       );
-    }
-  }
-
-  void _importFromExcel(ScheduleProvider provider) async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['xlsx'],
-      );
-      if (result == null || result.files.isEmpty) return;
-
-      final filePath = result.files.first.path;
-      if (filePath == null) return;
-      if (!mounted) return;
-
-      // 加载中
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => const Center(child: CircularProgressIndicator()),
-      );
-
-      final courses = await XlsImportService.parseFile(filePath);
-
-      if (!mounted) return;
-      Navigator.pop(context); // 关闭加载
-
-      if (courses.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('未解析到任何课程，请检查文件格式')),
-        );
-        return;
-      }
-
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('导入 Excel 课表'),
-          content: Text('解析到 ${courses.length} 门课程，是否导入到当前课表集？'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('导入'),
-            ),
-          ],
-        ),
-      );
-
-      if (confirmed == true) {
-        await provider.importCoursesToActiveSet(courses);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('成功导入 ${courses.length} 门课程')),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(context); // 关闭加载（如果还在）
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('导入失败: $e')),
-        );
-      }
     }
   }
 }

@@ -13,9 +13,12 @@ class DatabaseService {
   factory DatabaseService() => _instance;
   DatabaseService._internal();
 
+  Future<Database>? _initDbFuture;
+
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDatabase();
+    _initDbFuture ??= _initDatabase();
+    _database = await _initDbFuture!;
     return _database!;
   }
 
@@ -99,19 +102,22 @@ class DatabaseService {
       });
       // courses 表新增 scheduleSetId 列
       await db.execute(
-          "ALTER TABLE courses ADD COLUMN scheduleSetId TEXT DEFAULT ''");
+        "ALTER TABLE courses ADD COLUMN scheduleSetId TEXT DEFAULT ''",
+      );
       // 现有课程归入默认集
       await db.update('courses', {'scheduleSetId': defaultSetId});
     }
     if (oldVersion < 3) {
       // v3: 课程提醒字段
       await db.execute(
-          "ALTER TABLE courses ADD COLUMN reminderMinutesBefore INTEGER DEFAULT 15");
+        "ALTER TABLE courses ADD COLUMN reminderMinutesBefore INTEGER DEFAULT 15",
+      );
     }
     if (oldVersion < 4) {
       // v4: 自定义上课周数
       await db.execute(
-          "ALTER TABLE courses ADD COLUMN activeWeeks TEXT DEFAULT '[]'");
+        "ALTER TABLE courses ADD COLUMN activeWeeks TEXT DEFAULT '[]'",
+      );
     }
   }
 
@@ -125,22 +131,32 @@ class DatabaseService {
 
   Future<ScheduleSet?> getScheduleSet(String id) async {
     final db = await database;
-    final maps =
-        await db.query('schedule_sets', where: 'id = ?', whereArgs: [id]);
+    final maps = await db.query(
+      'schedule_sets',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
     if (maps.isEmpty) return null;
     return ScheduleSet.fromMap(maps.first);
   }
 
   Future<void> insertScheduleSet(ScheduleSet set) async {
     final db = await database;
-    await db.insert('schedule_sets', set.toMap(),
-        conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+      'schedule_sets',
+      set.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<void> updateScheduleSet(ScheduleSet set) async {
     final db = await database;
-    await db.update('schedule_sets', set.toMap(),
-        where: 'id = ?', whereArgs: [set.id]);
+    await db.update(
+      'schedule_sets',
+      set.toMap(),
+      where: 'id = ?',
+      whereArgs: [set.id],
+    );
   }
 
   Future<void> deleteScheduleSet(String id) async {
@@ -157,8 +173,11 @@ class DatabaseService {
 
   Future<List<Course>> getCoursesBySet(String setId) async {
     final db = await database;
-    final maps = await db
-        .query('courses', where: 'scheduleSetId = ?', whereArgs: [setId]);
+    final maps = await db.query(
+      'courses',
+      where: 'scheduleSetId = ?',
+      whereArgs: [setId],
+    );
     return maps.map((map) => Course.fromMap(map)).toList();
   }
 
@@ -177,15 +196,22 @@ class DatabaseService {
 
   Future<void> insertCourse(Course course) async {
     final db = await database;
-    await db.insert('courses', course.toMap(),
-        conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+      'courses',
+      course.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<void> updateCourse(Course course) async {
     try {
       final db = await database;
-      await db.update('courses', course.toMap(),
-          where: 'id = ?', whereArgs: [course.id]);
+      await db.update(
+        'courses',
+        course.toMap(),
+        where: 'id = ?',
+        whereArgs: [course.id],
+      );
     } on DatabaseException catch (e) {
       throw Exception('更新课程失败: $e');
     }
@@ -214,8 +240,11 @@ class DatabaseService {
     final db = await database;
     final batch = db.batch();
     for (final course in courses) {
-      batch.insert('courses', course.toMap(),
-          conflictAlgorithm: ConflictAlgorithm.replace);
+      batch.insert(
+        'courses',
+        course.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
     }
     await batch.commit(noResult: true);
   }
@@ -235,8 +264,12 @@ class DatabaseService {
 
   Future<void> updateTimeSlot(TimeSlot slot) async {
     final db = await database;
-    await db.update('time_slots', slot.toMap(),
-        where: 'period = ?', whereArgs: [slot.period]);
+    await db.update(
+      'time_slots',
+      slot.toMap(),
+      where: 'period = ?',
+      whereArgs: [slot.period],
+    );
   }
 
   Future<void> saveTimeSlots(List<TimeSlot> slots) async {
@@ -283,8 +316,8 @@ class DatabaseService {
       final timeSlotsRaw = data['timeSlots'];
       final timeSlotsList = timeSlotsRaw is List
           ? timeSlotsRaw
-              .map((e) => TimeSlot.fromMap(e as Map<String, dynamic>))
-              .toList()
+                .map((e) => TimeSlot.fromMap(e as Map<String, dynamic>))
+                .toList()
           : <TimeSlot>[];
 
       List<ScheduleSet> scheduleSets = [];
@@ -308,23 +341,32 @@ class DatabaseService {
             name: '我的课表',
             semesterStart: defaultSemesterStart,
           );
-          await txn.insert('schedule_sets', defaultSet.toMap(),
-              conflictAlgorithm: ConflictAlgorithm.replace);
+          await txn.insert(
+            'schedule_sets',
+            defaultSet.toMap(),
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
           for (final course in coursesList) {
             course.scheduleSetId = defaultSetId;
           }
         } else {
           // v2.0 格式：导入课表集
           for (final set in scheduleSets) {
-            await txn.insert('schedule_sets', set.toMap(),
-                conflictAlgorithm: ConflictAlgorithm.replace);
+            await txn.insert(
+              'schedule_sets',
+              set.toMap(),
+              conflictAlgorithm: ConflictAlgorithm.replace,
+            );
           }
         }
 
         // 批量插入课程
         for (final course in coursesList) {
-          await txn.insert('courses', course.toMap(),
-              conflictAlgorithm: ConflictAlgorithm.replace);
+          await txn.insert(
+            'courses',
+            course.toMap(),
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
         }
 
         // 导入时间表

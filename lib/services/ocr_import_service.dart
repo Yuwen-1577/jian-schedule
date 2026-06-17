@@ -42,7 +42,11 @@ class OcrImportService {
 ''';
 
   static Future<List<Course>> parseImage(
-      String imagePath, String apiUrl, String apiKey, String modelName) async {
+    String imagePath,
+    String apiUrl,
+    String apiKey,
+    String modelName,
+  ) async {
     if (apiUrl.isEmpty || apiKey.isEmpty || modelName.isEmpty) {
       throw Exception('请先在设置中配置完整的 OCR 大模型 API 信息');
     }
@@ -53,24 +57,19 @@ class OcrImportService {
     final requestBody = {
       "model": modelName,
       "messages": [
-        {
-          "role": "system",
-          "content": _systemPrompt
-        },
+        {"role": "system", "content": _systemPrompt},
         {
           "role": "user",
           "content": [
             {"type": "text", "text": "请提取这张课表截图中的所有课程信息。"},
             {
               "type": "image_url",
-              "image_url": {
-                "url": "data:image/jpeg;base64,$base64Image"
-              }
-            }
-          ]
-        }
+              "image_url": {"url": "data:image/jpeg;base64,$base64Image"},
+            },
+          ],
+        },
       ],
-      "temperature": 0.1
+      "temperature": 0.1,
     };
 
     final response = await http.post(
@@ -105,12 +104,12 @@ class OcrImportService {
     try {
       final Map<String, dynamic> jsonMap = jsonDecode(content);
       final List<dynamic> courseList = jsonMap['courses'] ?? [];
-      
+
       return courseList.map((c) {
         final List<dynamic> weeksDynamic = c['activeWeeks'] ?? [];
         final List<int> weeks = weeksDynamic.map((e) => e as int).toList();
         final randomColor = presetColors[Random().nextInt(presetColors.length)];
-        
+
         return Course(
           id: const Uuid().v4(),
           name: c['name'] ?? '未知课程',

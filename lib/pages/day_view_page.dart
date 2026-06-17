@@ -6,6 +6,7 @@ import '../models/course.dart';
 import '../providers/schedule_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/constants.dart';
+import '../utils/time_utils.dart';
 import 'course_edit_page.dart';
 import 'settings_page.dart';
 
@@ -77,8 +78,10 @@ class _DayViewPageState extends State<DayViewPage> {
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'settings') {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const SettingsPage()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsPage()),
+                );
               }
             },
             itemBuilder: (context) => [
@@ -95,7 +98,10 @@ class _DayViewPageState extends State<DayViewPage> {
             decoration: BoxDecoration(
               color: cs.surfaceContainerLowest,
               border: Border(
-                bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5), width: 0.5),
+                bottom: BorderSide(
+                  color: cs.outlineVariant.withValues(alpha: 0.5),
+                  width: 0.5,
+                ),
               ),
             ),
             child: PageView.builder(
@@ -104,8 +110,12 @@ class _DayViewPageState extends State<DayViewPage> {
                 final weekOffset = index - 1000;
                 final now = DateTime.now();
                 final today = DateTime(now.year, now.month, now.day);
-                final currentWeekMonday = today.subtract(Duration(days: today.weekday - 1));
-                final pageMonday = currentWeekMonday.add(Duration(days: weekOffset * 7));
+                final currentWeekMonday = today.subtract(
+                  Duration(days: today.weekday - 1),
+                );
+                final pageMonday = currentWeekMonday.add(
+                  Duration(days: weekOffset * 7),
+                );
 
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -124,7 +134,9 @@ class _DayViewPageState extends State<DayViewPage> {
                             weekdayShortNames[i],
                             style: TextStyle(
                               fontSize: 11,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
                               color: isSelected
                                   ? cs.primary
                                   : cs.onSurfaceVariant.withValues(alpha: 0.7),
@@ -136,9 +148,13 @@ class _DayViewPageState extends State<DayViewPage> {
                             height: 34,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: isSelected 
-                                  ? cs.primary 
-                                  : (isToday ? cs.primaryContainer.withValues(alpha: 0.6) : Colors.transparent),
+                              color: isSelected
+                                  ? cs.primary
+                                  : (isToday
+                                        ? cs.primaryContainer.withValues(
+                                            alpha: 0.6,
+                                          )
+                                        : Colors.transparent),
                             ),
                             alignment: Alignment.center,
                             child: Text(
@@ -164,10 +180,7 @@ class _DayViewPageState extends State<DayViewPage> {
           ),
           // 时间轴主体
           Expanded(
-            child: _TimelineView(
-              date: _selectedDate,
-              provider: provider,
-            ),
+            child: _TimelineView(date: _selectedDate, provider: provider),
           ),
         ],
       ),
@@ -201,12 +214,16 @@ class _TimelineViewState extends State<_TimelineView> {
     _scrollController = ScrollController();
     _calculateHours();
     _startTimer();
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final now = TimeOfDay.now();
-      final offset = ((now.hour * 60 + now.minute) - _startHour * 60) * hourHeight / 60.0;
-      final target = (offset - 100).clamp(0.0, _scrollController.position.maxScrollExtent);
+      final offset =
+          ((now.hour * 60 + now.minute) - _startHour * 60) * hourHeight / 60.0;
+      final target = (offset - 100).clamp(
+        0.0,
+        _scrollController.position.maxScrollExtent,
+      );
       _scrollController.jumpTo(target);
     });
   }
@@ -241,8 +258,8 @@ class _TimelineViewState extends State<_TimelineView> {
   void _calculateHours() {
     final timeSlots = widget.provider.timeSlots;
     if (timeSlots.isNotEmpty) {
-      final startMin = _parseMinutes(timeSlots.first.startTime);
-      final endMin = _parseMinutes(timeSlots.last.endTime);
+      final startMin = TimeUtils.parseMinutes(timeSlots.first.startTime);
+      final endMin = TimeUtils.parseMinutes(timeSlots.last.endTime);
       _startHour = (startMin / 60).floor().clamp(0, 24);
       _endHour = (endMin / 60).ceil().clamp(0, 24);
       if (_startHour > 0) _startHour--;
@@ -250,32 +267,31 @@ class _TimelineViewState extends State<_TimelineView> {
     }
   }
 
-  int _parseMinutes(String time) {
-    try {
-      final parts = time.split(':');
-      return int.parse(parts[0]) * 60 + int.parse(parts[1]);
-    } catch (_) {
-      return 0;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final courses = widget.provider.getCoursesForDate(widget.date);
     final cs = Theme.of(context).colorScheme;
-    final isToday = widget.date.isAtSameMomentAs(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day));
+    final isToday = widget.date.isAtSameMomentAs(
+      DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day),
+    );
 
     if (courses.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.free_breakfast,
-                size: 64, color: cs.onSurfaceVariant.withValues(alpha: 0.2)),
+            Icon(
+              Icons.free_breakfast,
+              size: 64,
+              color: cs.onSurfaceVariant.withValues(alpha: 0.2),
+            ),
             const SizedBox(height: Gap.md),
             Text(
               '今天没有课程，享受休息吧！',
-              style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant.withValues(alpha: 0.7)),
+              style: TextStyle(
+                fontSize: 14,
+                color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+              ),
             ),
           ],
         ),
@@ -342,10 +358,12 @@ class _TimelineViewState extends State<_TimelineView> {
             left: timeColumnWidth,
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final positionedCourses = _calculateCoursePositions(courses, constraints.maxWidth, isToday);
-                return Stack(
-                  children: positionedCourses,
+                final positionedCourses = _calculateCoursePositions(
+                  courses,
+                  constraints.maxWidth,
+                  isToday,
                 );
+                return Stack(children: positionedCourses);
               },
             ),
           ),
@@ -354,7 +372,11 @@ class _TimelineViewState extends State<_TimelineView> {
     );
   }
 
-  List<Widget> _calculateCoursePositions(List<Course> courses, double availableWidth, bool isToday) {
+  List<Widget> _calculateCoursePositions(
+    List<Course> courses,
+    double availableWidth,
+    bool isToday,
+  ) {
     if (courses.isEmpty) return [];
 
     final timeSlots = widget.provider.timeSlots;
@@ -362,9 +384,14 @@ class _TimelineViewState extends State<_TimelineView> {
 
     final List<_CourseBlock> blocks = [];
     for (final course in courses) {
-      if (course.startPeriod <= timeSlots.length && course.endPeriod <= timeSlots.length) {
-        final startMin = _parseMinutes(timeSlots[course.startPeriod - 1].startTime);
-        final endMin = _parseMinutes(timeSlots[course.endPeriod - 1].endTime);
+      if (course.startPeriod <= timeSlots.length &&
+          course.endPeriod <= timeSlots.length) {
+        final startMin = TimeUtils.parseMinutes(
+          timeSlots[course.startPeriod - 1].startTime,
+        );
+        final endMin = TimeUtils.parseMinutes(
+          timeSlots[course.endPeriod - 1].endTime,
+        );
         blocks.add(_CourseBlock(course, startMin, endMin));
       }
     }
@@ -380,12 +407,12 @@ class _TimelineViewState extends State<_TimelineView> {
         currentGroup.add(block);
         currentGroupEnd = block.endMin;
       } else {
-        if (block.startMin < currentGroupEnd) { 
+        if (block.startMin < currentGroupEnd) {
           currentGroup.add(block);
           if (block.endMin > currentGroupEnd) {
             currentGroupEnd = block.endMin;
           }
-        } else { 
+        } else {
           groups.add(currentGroup);
           currentGroup = [block];
           currentGroupEnd = block.endMin;
@@ -398,7 +425,7 @@ class _TimelineViewState extends State<_TimelineView> {
 
     List<Widget> widgets = [];
     final startMinutes = _startHour * 60;
-    
+
     final nowTime = TimeOfDay.now();
     final currentMinutes = nowTime.hour * 60 + nowTime.minute;
 
@@ -426,12 +453,14 @@ class _TimelineViewState extends State<_TimelineView> {
           final top = (block.startMin - startMinutes) * hourHeight / 60.0;
           final height = (block.endMin - block.startMin) * hourHeight / 60.0;
           final left = c * cardWidth;
-          
+
           CourseStatus status = CourseStatus.normal;
           if (isToday) {
-            if (currentMinutes >= block.startMin && currentMinutes < block.endMin) {
+            if (currentMinutes >= block.startMin &&
+                currentMinutes < block.endMin) {
               status = CourseStatus.ongoing;
-            } else if (block.startMin > currentMinutes && (block.startMin - currentMinutes) <= 30) {
+            } else if (block.startMin > currentMinutes &&
+                (block.startMin - currentMinutes) <= 30) {
               status = CourseStatus.upcoming;
             }
           }
@@ -444,8 +473,14 @@ class _TimelineViewState extends State<_TimelineView> {
               height: height,
               child: _DayCourseCard(
                 course: block.course,
-                startTime: widget.provider.timeSlots[block.course.startPeriod - 1].startTime,
-                endTime: widget.provider.timeSlots[block.course.endPeriod - 1].endTime,
+                startTime: widget
+                    .provider
+                    .timeSlots[block.course.startPeriod - 1]
+                    .startTime,
+                endTime: widget
+                    .provider
+                    .timeSlots[block.course.endPeriod - 1]
+                    .endTime,
                 status: status,
               ),
             ),
@@ -483,7 +518,8 @@ class _DayCourseCard extends StatefulWidget {
   State<_DayCourseCard> createState() => _DayCourseCardState();
 }
 
-class _DayCourseCardState extends State<_DayCourseCard> with SingleTickerProviderStateMixin {
+class _DayCourseCardState extends State<_DayCourseCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _glowController;
   late Animation<double> _glowAnimation;
 
@@ -497,7 +533,7 @@ class _DayCourseCardState extends State<_DayCourseCard> with SingleTickerProvide
     _glowAnimation = Tween<double>(begin: 0.2, end: 0.8).animate(
       CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
     );
-    
+
     if (widget.status == CourseStatus.ongoing) {
       _glowController.repeat(reverse: true);
     }
@@ -506,9 +542,11 @@ class _DayCourseCardState extends State<_DayCourseCard> with SingleTickerProvide
   @override
   void didUpdateWidget(_DayCourseCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.status == CourseStatus.ongoing && oldWidget.status != CourseStatus.ongoing) {
+    if (widget.status == CourseStatus.ongoing &&
+        oldWidget.status != CourseStatus.ongoing) {
       _glowController.repeat(reverse: true);
-    } else if (widget.status != CourseStatus.ongoing && oldWidget.status == CourseStatus.ongoing) {
+    } else if (widget.status != CourseStatus.ongoing &&
+        oldWidget.status == CourseStatus.ongoing) {
       _glowController.stop();
     }
   }
@@ -525,13 +563,15 @@ class _DayCourseCardState extends State<_DayCourseCard> with SingleTickerProvide
     final isDark = cs.brightness == Brightness.dark;
 
     final baseColor = intToColor(widget.course.colorValue);
-    
+
     // 基础颜色增强饱和度
     final bgColor = isDark
         ? baseColor.withValues(alpha: 0.25)
         : baseColor.withValues(alpha: 0.15);
 
-    final textColor = isDark ? Colors.white.withValues(alpha: 0.95) : cs.onSurface;
+    final textColor = isDark
+        ? Colors.white.withValues(alpha: 0.95)
+        : cs.onSurface;
     final subTextColor = isDark
         ? Colors.white.withValues(alpha: 0.7)
         : cs.onSurfaceVariant;
@@ -551,10 +591,7 @@ class _DayCourseCardState extends State<_DayCourseCard> with SingleTickerProvide
               left: 0,
               top: 0,
               bottom: 0,
-              child: Container(
-                width: 4,
-                color: baseColor,
-              ),
+              child: Container(width: 4, color: baseColor),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, Gap.sm, Gap.sm, Gap.sm),
@@ -589,10 +626,7 @@ class _DayCourseCardState extends State<_DayCourseCard> with SingleTickerProvide
                     const SizedBox(height: 4),
                     Text(
                       widget.course.teacher,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: subTextColor,
-                      ),
+                      style: TextStyle(fontSize: 11, color: subTextColor),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -617,10 +651,13 @@ class _DayCourseCardState extends State<_DayCourseCard> with SingleTickerProvide
                 top: 6,
                 right: 6,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
-                    color: widget.status == CourseStatus.ongoing 
-                        ? baseColor 
+                    color: widget.status == CourseStatus.ongoing
+                        ? baseColor
                         : baseColor.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(4),
                   ),
@@ -629,8 +666,8 @@ class _DayCourseCardState extends State<_DayCourseCard> with SingleTickerProvide
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: widget.status == CourseStatus.ongoing 
-                          ? Colors.white 
+                      color: widget.status == CourseStatus.ongoing
+                          ? Colors.white
                           : baseColor,
                     ),
                   ),
@@ -667,7 +704,7 @@ class _DayCourseCardState extends State<_DayCourseCard> with SingleTickerProvide
         ),
       );
     }
-    
+
     // 即将开始：虚线边框
     if (widget.status == CourseStatus.upcoming) {
       return GestureDetector(
@@ -711,7 +748,10 @@ class _DashedBorderPainter extends CustomPainter {
 
     for (PathMetric measurePath in path.computeMetrics()) {
       while (distance < measurePath.length) {
-        final extractPath = measurePath.extractPath(distance, distance + dashWidth);
+        final extractPath = measurePath.extractPath(
+          distance,
+          distance + dashWidth,
+        );
         canvas.drawPath(extractPath, paint);
         distance += dashWidth + dashSpace;
       }
@@ -720,5 +760,6 @@ class _DashedBorderPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_DashedBorderPainter oldDelegate) => oldDelegate.color != color;
+  bool shouldRepaint(_DashedBorderPainter oldDelegate) =>
+      oldDelegate.color != color;
 }

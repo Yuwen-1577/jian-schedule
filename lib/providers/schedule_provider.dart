@@ -290,7 +290,8 @@ class ScheduleProvider extends ChangeNotifier {
 
   // 调度课程提醒通知
   Future<void> _scheduleNotifications() async {
-    if (kIsWeb || !(Platform.isAndroid || Platform.isIOS || Platform.isMacOS)) return;
+    if (kIsWeb || !(Platform.isAndroid || Platform.isIOS || Platform.isMacOS))
+      return;
     try {
       await NotificationService().scheduleWeeklyReminders(
         courses: _courses,
@@ -305,11 +306,15 @@ class ScheduleProvider extends ChangeNotifier {
 
   // 同步所有后台任务（小部件 + 通知）
   void _syncAll() {
-    unawaited(_syncWidgetData().catchError((e) {
-      debugPrint('Widget同步失败: $e');
-    }));
-    unawaited(_scheduleNotifications().catchError((e) {
-      debugPrint('通知调度失败: $e');
-    }));
+    unawaited(
+      _syncWidgetData().catchError((e) {
+        debugPrint('Widget同步失败: $e');
+      }),
+    );
+    unawaited(
+      _scheduleNotifications().catchError((e) {
+        debugPrint('通知调度失败: $e');
+      }),
+    );
   }
 }

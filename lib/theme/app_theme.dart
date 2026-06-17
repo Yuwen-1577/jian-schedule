@@ -56,10 +56,7 @@ ThemeData buildLightTheme(Color seed, {bool useSystemFont = false}) {
 
 /// 构建深色主题
 ThemeData buildDarkTheme(Color seed, {bool useSystemFont = false}) {
-  final cs = ColorScheme.fromSeed(
-    seedColor: seed,
-    brightness: Brightness.dark,
-  );
+  final cs = ColorScheme.fromSeed(seedColor: seed, brightness: Brightness.dark);
 
   final warmCs = cs.copyWith(
     surface: const Color(0xFF141413),
@@ -148,9 +145,7 @@ ThemeData _buildTheme(ColorScheme cs, bool useSystemFont) {
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: cs.surfaceContainerLow,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppRadius.lg),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
       ),
       showDragHandle: true,
     ),
@@ -213,10 +208,7 @@ ThemeData _buildTheme(ColorScheme cs, bool useSystemFont) {
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: cs.inverseSurface,
-      contentTextStyle: TextStyle(
-        color: cs.onInverseSurface,
-        fontSize: 14,
-      ),
+      contentTextStyle: TextStyle(color: cs.onInverseSurface, fontSize: 14),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.sm),
       ),

@@ -31,7 +31,7 @@ class CourseEditBottomSheet extends StatefulWidget {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent, 
+      backgroundColor: Colors.transparent,
       builder: (_) => Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -119,10 +119,13 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
                       DropdownButton<int>(
                         value: tempDay,
                         underline: const SizedBox(),
-                        items: List.generate(7, (i) => DropdownMenuItem(
-                          value: i + 1,
-                          child: Text(weekdayNames[i]),
-                        )),
+                        items: List.generate(
+                          7,
+                          (i) => DropdownMenuItem(
+                            value: i + 1,
+                            child: Text(weekdayNames[i]),
+                          ),
+                        ),
                         onChanged: (v) => setDialogState(() => tempDay = v!),
                       ),
                     ],
@@ -135,10 +138,13 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
                       DropdownButton<int>(
                         value: tempStart,
                         underline: const SizedBox(),
-                        items: List.generate(maxPeriods, (i) => DropdownMenuItem(
-                          value: i + 1,
-                          child: Text('第 ${i + 1} 节'),
-                        )),
+                        items: List.generate(
+                          maxPeriods,
+                          (i) => DropdownMenuItem(
+                            value: i + 1,
+                            child: Text('第 ${i + 1} 节'),
+                          ),
+                        ),
                         onChanged: (v) {
                           setDialogState(() {
                             tempStart = v!;
@@ -158,28 +164,35 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
                       DropdownButton<int>(
                         value: tempDuration,
                         underline: const SizedBox(),
-                        items: List.generate(maxPeriods - tempStart + 1, (i) => DropdownMenuItem(
-                          value: i + 1,
-                          child: Text('${i + 1} 节'),
-                        )),
-                        onChanged: (v) => setDialogState(() => tempDuration = v!),
+                        items: List.generate(
+                          maxPeriods - tempStart + 1,
+                          (i) => DropdownMenuItem(
+                            value: i + 1,
+                            child: Text('${i + 1} 节'),
+                          ),
+                        ),
+                        onChanged: (v) =>
+                            setDialogState(() => tempDuration = v!),
                       ),
                     ],
                   ),
                 ],
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
                 TextButton(
-                  onPressed: () => Navigator.pop(ctx, true), 
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('取消'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, true),
                   style: TextButton.styleFrom(foregroundColor: cs.primary),
                   child: const Text('确定'),
                 ),
               ],
             );
-          }
+          },
         );
-      }
+      },
     );
 
     if (result == true) {
@@ -221,7 +234,11 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
           builder: (ctx, setDialogState) {
             return AlertDialog(
               contentPadding: const EdgeInsets.all(16),
-              title: const Text('选择上课周数', style: TextStyle(fontSize: 18), textAlign: TextAlign.center),
+              title: const Text(
+                '选择上课周数',
+                style: TextStyle(fontSize: 18),
+                textAlign: TextAlign.center,
+              ),
               content: SizedBox(
                 width: double.maxFinite,
                 child: Column(
@@ -231,11 +248,12 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
                       child: GridView.builder(
                         shrinkWrap: true,
                         itemCount: maxWeekCount,
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 5,
-                          mainAxisSpacing: 8,
-                          crossAxisSpacing: 8,
-                        ),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 5,
+                              mainAxisSpacing: 8,
+                              crossAxisSpacing: 8,
+                            ),
                         itemBuilder: (context, index) {
                           final week = index + 1;
                           final isSelected = tempWeeks.contains(week);
@@ -253,13 +271,19 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: isSelected ? cs.primary : cs.surfaceContainerHigh,
+                                color: isSelected
+                                    ? cs.primary
+                                    : cs.surfaceContainerHigh,
                               ),
                               child: Text(
                                 '$week',
                                 style: TextStyle(
-                                  color: isSelected ? cs.onPrimary : cs.onSurface,
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  color: isSelected
+                                      ? cs.onPrimary
+                                      : cs.onSurface,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
                                 ),
                               ),
                             ),
@@ -275,7 +299,9 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
                           onPressed: () {
                             setDialogState(() {
                               tempWeeks.clear();
-                              tempWeeks.addAll(List.generate(maxWeekCount, (i) => i + 1));
+                              tempWeeks.addAll(
+                                List.generate(maxWeekCount, (i) => i + 1),
+                              );
                             });
                           },
                           child: const Text('全周'),
@@ -284,7 +310,12 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
                           onPressed: () {
                             setDialogState(() {
                               tempWeeks.clear();
-                              tempWeeks.addAll(List.generate(maxWeekCount, (i) => i + 1).where((w) => w % 2 == 1));
+                              tempWeeks.addAll(
+                                List.generate(
+                                  maxWeekCount,
+                                  (i) => i + 1,
+                                ).where((w) => w % 2 == 1),
+                              );
                             });
                           },
                           child: const Text('单周'),
@@ -293,7 +324,12 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
                           onPressed: () {
                             setDialogState(() {
                               tempWeeks.clear();
-                              tempWeeks.addAll(List.generate(maxWeekCount, (i) => i + 1).where((w) => w % 2 == 0));
+                              tempWeeks.addAll(
+                                List.generate(
+                                  maxWeekCount,
+                                  (i) => i + 1,
+                                ).where((w) => w % 2 == 0),
+                              );
                             });
                           },
                           child: const Text('双周'),
@@ -304,7 +340,10 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('取消'),
+                ),
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, true),
                   style: TextButton.styleFrom(foregroundColor: cs.primary),
@@ -338,7 +377,8 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
       activeWeeks: _activeWeeks,
       colorValue: _colorValue,
       note: widget.initialCourse?.note ?? '',
-      scheduleSetId: widget.initialCourse?.scheduleSetId ?? provider.activeSetId,
+      scheduleSetId:
+          widget.initialCourse?.scheduleSetId ?? provider.activeSetId,
     );
 
     if (widget.initialCourse != null) {
@@ -384,7 +424,9 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
       padding: const EdgeInsets.all(Gap.xl),
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppRadius.lg),
+        ),
       ),
       child: Form(
         key: _formKey,
@@ -420,10 +462,9 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
               const SizedBox(height: Gap.xl),
               TextFormField(
                 controller: _nameCtrl,
-                decoration: const InputDecoration(
-                  labelText: '课程名称',
-                ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? '请输入名称' : null,
+                decoration: const InputDecoration(labelText: '课程名称'),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? '请输入名称' : null,
               ),
               const SizedBox(height: Gap.md),
               Row(
@@ -444,7 +485,7 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
                 ],
               ),
               const SizedBox(height: Gap.lg),
-              
+
               Material(
                 color: cs.surfaceContainer,
                 borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -456,15 +497,25 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('上课时间', style: TextStyle(color: cs.onSurfaceVariant)),
+                        Text(
+                          '上课时间',
+                          style: TextStyle(color: cs.onSurfaceVariant),
+                        ),
                         Row(
                           children: [
                             Text(
                               '${weekdayNames[_day - 1]} 第$_startPeriod-${_startPeriod + _duration - 1}节',
-                              style: TextStyle(fontWeight: FontWeight.w600, color: cs.onSurface),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: cs.onSurface,
+                              ),
                             ),
                             const SizedBox(width: Gap.sm),
-                            Icon(Icons.edit_outlined, size: 16, color: cs.onSurfaceVariant),
+                            Icon(
+                              Icons.edit_outlined,
+                              size: 16,
+                              color: cs.onSurfaceVariant,
+                            ),
                           ],
                         ),
                       ],
@@ -485,7 +536,10 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('上课周数', style: TextStyle(color: cs.onSurfaceVariant)),
+                        Text(
+                          '上课周数',
+                          style: TextStyle(color: cs.onSurfaceVariant),
+                        ),
                         Expanded(
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.end,
@@ -493,13 +547,20 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
                               Flexible(
                                 child: Text(
                                   _formatActiveWeeks(),
-                                  style: TextStyle(fontWeight: FontWeight.w600, color: cs.onSurface),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: cs.onSurface,
+                                  ),
                                   overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.right,
                                 ),
                               ),
                               const SizedBox(width: Gap.sm),
-                              Icon(Icons.edit_outlined, size: 16, color: cs.onSurfaceVariant),
+                              Icon(
+                                Icons.edit_outlined,
+                                size: 16,
+                                color: cs.onSurfaceVariant,
+                              ),
                             ],
                           ),
                         ),
@@ -515,12 +576,21 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('高级选项 (颜色)', style: TextStyle(color: cs.primary, fontSize: 13)),
-                    Icon(_showAdvanced ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: cs.primary, size: 16),
+                    Text(
+                      '高级选项 (颜色)',
+                      style: TextStyle(color: cs.primary, fontSize: 13),
+                    ),
+                    Icon(
+                      _showAdvanced
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      color: cs.primary,
+                      size: 16,
+                    ),
                   ],
                 ),
               ),
-              
+
               if (_showAdvanced) ...[
                 const SizedBox(height: Gap.lg),
                 CourseColorPicker(
@@ -536,9 +606,14 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
                   backgroundColor: cs.primary,
                   foregroundColor: cs.onPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
                 ),
-                child: const Text('保存', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: const Text(
+                  '保存',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),

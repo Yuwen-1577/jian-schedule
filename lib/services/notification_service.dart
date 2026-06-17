@@ -25,8 +25,9 @@ class NotificationService {
     tz.initializeTimeZones();
 
     // Android 初始化
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
 
     // iOS 初始化
     const iosSettings = DarwinInitializationSettings(
@@ -41,10 +42,12 @@ class NotificationService {
       macOS: iosSettings,
     );
 
-    _initialized = await _plugin.initialize(
-      settings,
-      onDidReceiveNotificationResponse: _onNotificationTapped,
-    ) ?? false;
+    _initialized =
+        await _plugin.initialize(
+          settings,
+          onDidReceiveNotificationResponse: _onNotificationTapped,
+        ) ??
+        false;
 
     // 请求 Android 13+ 权限
     await _requestPermissions();
@@ -54,8 +57,10 @@ class NotificationService {
 
   /// 请求通知权限
   Future<void> _requestPermissions() async {
-    final android = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     if (android != null) {
       await android.requestNotificationsPermission();
     }
@@ -90,10 +95,12 @@ class NotificationService {
       if (!course.isActiveInWeek(currentWeek)) continue;
 
       // 计算该课程在本周的具体日期
-      final weekStart =
-          semesterStart.add(Duration(days: (currentWeek - 1) * 7));
-      final courseDate =
-          weekStart.add(Duration(days: course.day - 1)); // day 从 1 开始
+      final weekStart = semesterStart.add(
+        Duration(days: (currentWeek - 1) * 7),
+      );
+      final courseDate = weekStart.add(
+        Duration(days: course.day - 1),
+      ); // day 从 1 开始
 
       // 获取上课开始时间
       final startIdx = course.startPeriod - 1;
@@ -116,8 +123,9 @@ class NotificationService {
       );
 
       // 提前提醒时间
-      final reminderTime =
-          classTime.subtract(Duration(minutes: course.reminderMinutesBefore));
+      final reminderTime = classTime.subtract(
+        Duration(minutes: course.reminderMinutesBefore),
+      );
 
       // 跳过已过去的提醒
       if (reminderTime.isBefore(now)) continue;
@@ -156,7 +164,9 @@ class NotificationService {
       scheduledCount++;
     }
 
-    debugPrint('Scheduled $scheduledCount course reminders for week $currentWeek');
+    debugPrint(
+      'Scheduled $scheduledCount course reminders for week $currentWeek',
+    );
   }
 
   /// 取消所有通知
@@ -175,8 +185,10 @@ class NotificationService {
   /// 检查通知权限状态
   Future<bool> areNotificationsEnabled() async {
     if (!_initialized) return false;
-    final android = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     if (android != null) {
       return await android.areNotificationsEnabled() ?? false;
     }

@@ -7,6 +7,7 @@ import '../providers/schedule_provider.dart';
 import '../pages/course_edit_page.dart';
 import '../theme/app_theme.dart';
 import '../utils/constants.dart';
+import '../utils/time_utils.dart';
 
 class TodayCourses extends StatelessWidget {
   const TodayCourses({super.key});
@@ -23,7 +24,10 @@ class TodayCourses extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Gap.lg, vertical: Gap.md),
+          padding: const EdgeInsets.symmetric(
+            horizontal: Gap.lg,
+            vertical: Gap.md,
+          ),
           child: Row(
             children: [
               Icon(Icons.today, size: 20, color: cs.primary),
@@ -39,10 +43,7 @@ class TodayCourses extends StatelessWidget {
               const SizedBox(width: Gap.sm),
               Text(
                 '第${provider.currentWeek}周 ${weekdayNames[today - 1]}',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: cs.onSurfaceVariant,
-                ),
+                style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
               ),
             ],
           ),
@@ -58,11 +59,13 @@ class TodayCourses extends StatelessWidget {
             ),
           )
         else
-          ...courses.map((course) => _TodayCourseItem(
-                course: course,
-                timeSlots: timeSlots,
-                onTap: () => CourseEditBottomSheet.show(context, course: course),
-              )),
+          ...courses.map(
+            (course) => _TodayCourseItem(
+              course: course,
+              timeSlots: timeSlots,
+              onTap: () => CourseEditBottomSheet.show(context, course: course),
+            ),
+          ),
         if (timeSlots.isNotEmpty) const _CurrentTimeIndicator(),
       ],
     );
@@ -98,7 +101,10 @@ class _TodayCourseItem extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.md),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Gap.md, vertical: Gap.sm + 2),
+          padding: const EdgeInsets.symmetric(
+            horizontal: Gap.md,
+            vertical: Gap.sm + 2,
+          ),
           child: Row(
             children: [
               Container(
@@ -124,9 +130,10 @@ class _TodayCourseItem extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      [course.room, course.teacher]
-                          .where((s) => s.isNotEmpty)
-                          .join(' · '),
+                      [
+                        course.room,
+                        course.teacher,
+                      ].where((s) => s.isNotEmpty).join(' · '),
                       style: TextStyle(
                         fontSize: 12,
                         color: cs.onSurfaceVariant,
@@ -187,15 +194,15 @@ class _CurrentTimeIndicatorState extends State<_CurrentTimeIndicator> {
     double progress = 0;
 
     for (int i = 0; i < timeSlots.length; i++) {
-      final start = _parseMinutes(timeSlots[i].startTime);
-      final end = _parseMinutes(timeSlots[i].endTime);
+      final start = TimeUtils.parseMinutes(timeSlots[i].startTime);
+      final end = TimeUtils.parseMinutes(timeSlots[i].endTime);
       if (currentMinutes >= start && currentMinutes < end) {
         currentPeriod = i + 1;
         progress = (currentMinutes - start) / (end - start);
         break;
       }
       if (i < timeSlots.length - 1) {
-        final nextStart = _parseMinutes(timeSlots[i + 1].startTime);
+        final nextStart = TimeUtils.parseMinutes(timeSlots[i + 1].startTime);
         if (currentMinutes >= end && currentMinutes < nextStart) {
           currentPeriod = -1;
           break;
@@ -207,7 +214,7 @@ class _CurrentTimeIndicatorState extends State<_CurrentTimeIndicator> {
     IconData icon;
     if (currentPeriod == null) {
       if (timeSlots.isNotEmpty &&
-          currentMinutes < _parseMinutes(timeSlots.first.startTime)) {
+          currentMinutes < TimeUtils.parseMinutes(timeSlots.first.startTime)) {
         status = '课程尚未开始';
         icon = Icons.hourglass_empty;
       } else {
@@ -225,7 +232,10 @@ class _CurrentTimeIndicatorState extends State<_CurrentTimeIndicator> {
     return Padding(
       padding: const EdgeInsets.all(Gap.lg),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: Gap.md, vertical: Gap.sm + 2),
+        padding: const EdgeInsets.symmetric(
+          horizontal: Gap.md,
+          vertical: Gap.sm + 2,
+        ),
         decoration: BoxDecoration(
           color: cs.primaryContainer.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -234,23 +244,10 @@ class _CurrentTimeIndicatorState extends State<_CurrentTimeIndicator> {
           children: [
             Icon(icon, size: 16, color: cs.primary),
             const SizedBox(width: Gap.sm),
-            Text(
-              status,
-              style: TextStyle(fontSize: 13, color: cs.primary),
-            ),
+            Text(status, style: TextStyle(fontSize: 13, color: cs.primary)),
           ],
         ),
       ),
     );
-  }
-
-  int _parseMinutes(String time) {
-    try {
-      final parts = time.split(':');
-      return int.parse(parts[0]) * 60 + int.parse(parts[1]);
-    } catch (e) {
-      debugPrint('Failed to parse time "$time": $e');
-      return 0;
-    }
   }
 }

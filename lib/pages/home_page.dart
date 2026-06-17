@@ -20,10 +20,7 @@ class _HomePageState extends State<HomePage> {
         children: [
           IndexedStack(
             index: _currentIndex,
-            children: const [
-              SchedulePage(),
-              DayViewPage(),
-            ],
+            children: const [SchedulePage(), DayViewPage()],
           ),
           Positioned(
             bottom: Gap.xl,
@@ -56,7 +53,8 @@ class _AnimatedFloatingToggle extends StatefulWidget {
   });
 
   @override
-  State<_AnimatedFloatingToggle> createState() => _AnimatedFloatingToggleState();
+  State<_AnimatedFloatingToggle> createState() =>
+      _AnimatedFloatingToggleState();
 }
 
 class _AnimatedFloatingToggleState extends State<_AnimatedFloatingToggle> {
@@ -79,7 +77,7 @@ class _AnimatedFloatingToggleState extends State<_AnimatedFloatingToggle> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = cs.brightness == Brightness.dark;
-    
+
     final width = _isExpanded ? 240.0 : 56.0;
     final height = 56.0;
 
@@ -99,7 +97,7 @@ class _AnimatedFloatingToggleState extends State<_AnimatedFloatingToggle> {
               color: isDark ? Colors.black45 : Colors.black26,
               blurRadius: 10,
               offset: const Offset(0, 4),
-            )
+            ),
           ],
         ),
         child: ClipRRect(
@@ -114,7 +112,9 @@ class _AnimatedFloatingToggleState extends State<_AnimatedFloatingToggle> {
                           onTap: () => _select(0),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: widget.currentIndex == 0 ? cs.primary : Colors.transparent,
+                              color: widget.currentIndex == 0
+                                  ? cs.primary
+                                  : Colors.transparent,
                               borderRadius: BorderRadius.circular(28.0),
                             ),
                             alignment: Alignment.center,
@@ -124,14 +124,22 @@ class _AnimatedFloatingToggleState extends State<_AnimatedFloatingToggle> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.calendar_view_week, size: 20, color: widget.currentIndex == 0 ? cs.onPrimary : cs.onPrimaryContainer),
+                                  Icon(
+                                    Icons.calendar_view_week,
+                                    size: 20,
+                                    color: widget.currentIndex == 0
+                                        ? cs.onPrimary
+                                        : cs.onPrimaryContainer,
+                                  ),
                                   const SizedBox(width: 4),
                                   Text(
                                     '周视图',
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
-                                      color: widget.currentIndex == 0 ? cs.onPrimary : cs.onPrimaryContainer,
+                                      color: widget.currentIndex == 0
+                                          ? cs.onPrimary
+                                          : cs.onPrimaryContainer,
                                     ),
                                   ),
                                 ],
@@ -145,7 +153,9 @@ class _AnimatedFloatingToggleState extends State<_AnimatedFloatingToggle> {
                           onTap: () => _select(1),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: widget.currentIndex == 1 ? cs.primary : Colors.transparent,
+                              color: widget.currentIndex == 1
+                                  ? cs.primary
+                                  : Colors.transparent,
                               borderRadius: BorderRadius.circular(28.0),
                             ),
                             alignment: Alignment.center,
@@ -155,14 +165,22 @@ class _AnimatedFloatingToggleState extends State<_AnimatedFloatingToggle> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.view_day, size: 20, color: widget.currentIndex == 1 ? cs.onPrimary : cs.onPrimaryContainer),
+                                  Icon(
+                                    Icons.view_day,
+                                    size: 20,
+                                    color: widget.currentIndex == 1
+                                        ? cs.onPrimary
+                                        : cs.onPrimaryContainer,
+                                  ),
                                   const SizedBox(width: 4),
                                   Text(
                                     '日视图',
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
-                                      color: widget.currentIndex == 1 ? cs.onPrimary : cs.onPrimaryContainer,
+                                      color: widget.currentIndex == 1
+                                          ? cs.onPrimary
+                                          : cs.onPrimaryContainer,
                                     ),
                                   ),
                                 ],
@@ -177,7 +195,9 @@ class _AnimatedFloatingToggleState extends State<_AnimatedFloatingToggle> {
                     onTap: _toggleExpand,
                     child: Center(
                       child: Icon(
-                        widget.currentIndex == 0 ? Icons.calendar_view_week : Icons.view_day,
+                        widget.currentIndex == 0
+                            ? Icons.calendar_view_week
+                            : Icons.view_day,
                         color: cs.onPrimaryContainer,
                       ),
                     ),

@@ -72,11 +72,9 @@ class _TimeSettingPageState extends State<TimeSettingPage> {
           '${newEndHour.toString().padLeft(2, '0')}:${newEndMin.toString().padLeft(2, '0')}';
     }
     setState(() {
-      _slots.add(TimeSlot(
-        period: newPeriod,
-        startTime: startTime,
-        endTime: endTime,
-      ));
+      _slots.add(
+        TimeSlot(period: newPeriod, startTime: startTime, endTime: endTime),
+      );
     });
   }
 
@@ -113,10 +111,7 @@ class _TimeSettingPageState extends State<TimeSettingPage> {
             tooltip: '恢复默认',
             onPressed: _resetToDefault,
           ),
-          TextButton(
-            onPressed: _save,
-            child: const Text('保存'),
-          ),
+          TextButton(onPressed: _save, child: const Text('保存')),
         ],
       ),
       body: Column(
@@ -148,7 +143,9 @@ class _TimeSettingPageState extends State<TimeSettingPage> {
                           width: 36,
                           height: 36,
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primaryContainer,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primaryContainer,
                             borderRadius: BorderRadius.circular(18),
                           ),
                           alignment: Alignment.center,
@@ -156,9 +153,9 @@ class _TimeSettingPageState extends State<TimeSettingPage> {
                             '${slot.period}',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onPrimaryContainer,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onPrimaryContainer,
                             ),
                           ),
                         ),
@@ -175,16 +172,23 @@ class _TimeSettingPageState extends State<TimeSettingPage> {
                                       labelText: '开始',
                                       border: OutlineInputBorder(),
                                       contentPadding: EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 4),
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
                                     ),
-                                    child: Text(slot.startTime,
-                                        style: const TextStyle(fontSize: 16)),
+                                    child: Text(
+                                      slot.startTime,
+                                      style: const TextStyle(fontSize: 16),
+                                    ),
                                   ),
                                 ),
                               ),
                               const Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 8),
-                                child: Text('—', style: TextStyle(fontSize: 18)),
+                                child: Text(
+                                  '—',
+                                  style: TextStyle(fontSize: 18),
+                                ),
                               ),
                               Expanded(
                                 child: InkWell(
@@ -195,10 +199,14 @@ class _TimeSettingPageState extends State<TimeSettingPage> {
                                       labelText: '结束',
                                       border: OutlineInputBorder(),
                                       contentPadding: EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 4),
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
                                     ),
-                                    child: Text(slot.endTime,
-                                        style: const TextStyle(fontSize: 16)),
+                                    child: Text(
+                                      slot.endTime,
+                                      style: const TextStyle(fontSize: 16),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -206,8 +214,11 @@ class _TimeSettingPageState extends State<TimeSettingPage> {
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.remove_circle_outline,
-                              color: Colors.red, size: 20),
+                          icon: const Icon(
+                            Icons.remove_circle_outline,
+                            color: Colors.red,
+                            size: 20,
+                          ),
                           onPressed: _slots.length > 1
                               ? () => _removeSlot(index)
                               : null,

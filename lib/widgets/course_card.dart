@@ -31,7 +31,9 @@ class CourseCard extends StatelessWidget {
         : baseColor.withValues(alpha: 0.85);
     final accentColor = baseColor;
 
-    final textColor = isDark ? Colors.white.withValues(alpha: 0.92) : cs.onSurface;
+    final textColor = isDark
+        ? Colors.white.withValues(alpha: 0.92)
+        : cs.onSurface;
     final subTextColor = isDark
         ? Colors.white.withValues(alpha: 0.65)
         : cs.onSurfaceVariant;
@@ -42,21 +44,49 @@ class CourseCard extends StatelessWidget {
         color: Colors.transparent,
         child: Opacity(
           opacity: 0.85,
-          child: _buildCardContent(context, isDark, bgColor, accentColor, textColor, subTextColor),
+          child: _buildCardContent(
+            context,
+            isDark,
+            bgColor,
+            accentColor,
+            textColor,
+            subTextColor,
+          ),
         ),
       ),
       childWhenDragging: Opacity(
         opacity: 0.3,
-        child: _buildCardContent(context, isDark, bgColor, accentColor, textColor, subTextColor),
+        child: _buildCardContent(
+          context,
+          isDark,
+          bgColor,
+          accentColor,
+          textColor,
+          subTextColor,
+        ),
       ),
       child: GestureDetector(
         onTap: onTap,
-        child: _buildCardContent(context, isDark, bgColor, accentColor, textColor, subTextColor),
+        child: _buildCardContent(
+          context,
+          isDark,
+          bgColor,
+          accentColor,
+          textColor,
+          subTextColor,
+        ),
       ),
     );
   }
 
-  Widget _buildCardContent(BuildContext context, bool isDark, Color bgColor, Color accentColor, Color textColor, Color subTextColor) {
+  Widget _buildCardContent(
+    BuildContext context,
+    bool isDark,
+    Color bgColor,
+    Color accentColor,
+    Color textColor,
+    Color subTextColor,
+  ) {
     final cs = Theme.of(context).colorScheme;
     return Container(
       width: width,
@@ -70,8 +100,8 @@ class CourseCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: bgColor,
               border: Border.all(
-                color: isDark 
-                    ? Colors.white.withValues(alpha: 0.1) 
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.1)
                     : Colors.white.withValues(alpha: 0.5),
                 width: 0.5,
               ),
@@ -130,7 +160,10 @@ class CourseCard extends StatelessWidget {
                     right: 0,
                     bottom: 0,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: cs.primary,
                         borderRadius: const BorderRadius.only(
@@ -141,7 +174,7 @@ class CourseCard extends StatelessWidget {
                       child: Text(
                         '$stackCount',
                         style: TextStyle(
-                          fontSize: 9, 
+                          fontSize: 9,
                           color: cs.onPrimary,
                           fontWeight: FontWeight.bold,
                         ),

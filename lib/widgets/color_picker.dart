@@ -35,10 +35,12 @@ class CourseColorPicker extends StatelessWidget {
                     ? Border.all(color: cs.outline, width: 2.5)
                     : Border.all(color: cs.outlineVariant, width: 1),
                 boxShadow: isSelected
-                    ? [BoxShadow(
-                        color: intToColor(color).withValues(alpha: 0.3),
-                        blurRadius: 6,
-                      )]
+                    ? [
+                        BoxShadow(
+                          color: intToColor(color).withValues(alpha: 0.3),
+                          blurRadius: 6,
+                        ),
+                      ]
                     : null,
               ),
               child: isSelected

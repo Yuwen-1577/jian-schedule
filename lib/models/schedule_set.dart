@@ -27,7 +27,9 @@ class ScheduleSet {
     return ScheduleSet(
       id: map['id'] as String? ?? '',
       name: map['name'] as String? ?? '',
-      semesterStart: DateTime.tryParse(map['semesterStart'] as String? ?? '') ?? defaultSemesterStart,
+      semesterStart:
+          DateTime.tryParse(map['semesterStart'] as String? ?? '') ??
+          defaultSemesterStart,
       sortOrder: map['sortOrder'] as int? ?? 0,
     );
   }

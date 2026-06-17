@@ -22,8 +22,10 @@ class ScheduleSetManagePage extends StatelessWidget {
           return Card(
             child: ListTile(
               leading: isActive
-                  ? Icon(Icons.check_circle,
-                      color: Theme.of(context).colorScheme.primary)
+                  ? Icon(
+                      Icons.check_circle,
+                      color: Theme.of(context).colorScheme.primary,
+                    )
                   : const Icon(Icons.schedule),
               title: Text(
                 set.name,
@@ -43,8 +45,11 @@ class ScheduleSetManagePage extends StatelessWidget {
                   ),
                   if (sets.length > 1)
                     IconButton(
-                      icon: const Icon(Icons.delete_outline,
-                          size: 20, color: Colors.red),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        size: 20,
+                        color: Colors.red,
+                      ),
                       onPressed: () => _deleteSet(context, provider, set),
                     ),
                 ],
@@ -63,7 +68,9 @@ class ScheduleSetManagePage extends StatelessWidget {
   }
 
   void _createSet(BuildContext context, ScheduleProvider provider) async {
-    final ctrl = TextEditingController(text: '未命名课表集${provider.scheduleSets.length + 1}');
+    final ctrl = TextEditingController(
+      text: '未命名课表集${provider.scheduleSets.length + 1}',
+    );
     try {
       final result = await showDialog<bool>(
         context: context,
@@ -99,7 +106,10 @@ class ScheduleSetManagePage extends StatelessWidget {
   }
 
   void _renameSet(
-      BuildContext context, ScheduleProvider provider, ScheduleSet set) async {
+    BuildContext context,
+    ScheduleProvider provider,
+    ScheduleSet set,
+  ) async {
     final ctrl = TextEditingController(text: set.name);
     try {
       final result = await showDialog<bool>(
@@ -135,7 +145,10 @@ class ScheduleSetManagePage extends StatelessWidget {
   }
 
   void _deleteSet(
-      BuildContext context, ScheduleProvider provider, ScheduleSet set) async {
+    BuildContext context,
+    ScheduleProvider provider,
+    ScheduleSet set,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(

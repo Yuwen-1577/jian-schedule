@@ -102,7 +102,8 @@ class Course {
       colorValue: colorValue ?? this.colorValue,
       note: note ?? this.note,
       scheduleSetId: scheduleSetId ?? this.scheduleSetId,
-      reminderMinutesBefore: reminderMinutesBefore ?? this.reminderMinutesBefore,
+      reminderMinutesBefore:
+          reminderMinutesBefore ?? this.reminderMinutesBefore,
     );
   }
 
@@ -116,7 +117,7 @@ class Course {
         }
       } catch (_) {}
     }
-    
+
     // 如果无数据（旧数据兼容），根据旧的 startWeek, endWeek, weekType 生成
     if (parsed.isEmpty) {
       final sw = map['startWeek'] as int? ?? 1;

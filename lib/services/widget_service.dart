@@ -62,10 +62,7 @@ class WidgetService {
         'endTime': slot.endTime,
       };
     }).toList();
-    await HomeWidget.saveWidgetData<String>(
-      'timeSlots',
-      jsonEncode(slotsData),
-    );
+    await HomeWidget.saveWidgetData<String>('timeSlots', jsonEncode(slotsData));
 
     // 更新所有相关的小部件 provider
     await _updateAllProviders();
@@ -111,9 +108,7 @@ class WidgetService {
     );
 
     // 更新紧凑模式小部件
-    await HomeWidget.updateWidget(
-      name: 'ScheduleWidgetCompactProvider',
-    );
+    await HomeWidget.updateWidget(name: 'ScheduleWidgetCompactProvider');
   }
 
   /// 同步周课表网格到桌面小部件
@@ -158,28 +153,17 @@ class WidgetService {
       }
     }
 
-    await HomeWidget.saveWidgetData<String>(
-      'weekGrid',
-      jsonEncode(weekGrid),
-    );
+    await HomeWidget.saveWidgetData<String>('weekGrid', jsonEncode(weekGrid));
 
     // 更新周视图小部件
-    await HomeWidget.updateWidget(
-      name: 'ScheduleWidgetWeekProvider',
-    );
+    await HomeWidget.updateWidget(name: 'ScheduleWidgetWeekProvider');
   }
 
   /// 更新所有小部件 provider
   static Future<void> _updateAllProviders() async {
-    await HomeWidget.updateWidget(
-      name: 'ScheduleWidgetListProvider',
-    );
-    await HomeWidget.updateWidget(
-      name: 'ScheduleWidgetCompactProvider',
-    );
-    await HomeWidget.updateWidget(
-      name: 'ScheduleWidgetWeekProvider',
-    );
+    await HomeWidget.updateWidget(name: 'ScheduleWidgetListProvider');
+    await HomeWidget.updateWidget(name: 'ScheduleWidgetCompactProvider');
+    await HomeWidget.updateWidget(name: 'ScheduleWidgetWeekProvider');
   }
 
   /// 触发所有小部件更新

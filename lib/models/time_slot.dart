@@ -12,11 +12,7 @@ class TimeSlot {
   });
 
   Map<String, dynamic> toMap() {
-    return {
-      'period': period,
-      'startTime': startTime,
-      'endTime': endTime,
-    };
+    return {'period': period, 'startTime': startTime, 'endTime': endTime};
   }
 
   factory TimeSlot.fromMap(Map<String, dynamic> map) {

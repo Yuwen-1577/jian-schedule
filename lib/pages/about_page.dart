@@ -38,7 +38,10 @@ class AboutPage extends StatelessWidget {
                     const SizedBox(height: 16),
                     const Text(
                       '简课表',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -51,12 +54,13 @@ class AboutPage extends StatelessWidget {
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 4),
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primaryContainer
-                            .withValues(alpha: 0.5),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -86,8 +90,9 @@ class AboutPage extends StatelessWidget {
                     const ListTile(
                       leading: Icon(Icons.phone_android),
                       title: Text('支持平台'),
-                      subtitle:
-                          Text('Android / iOS / Windows / Linux / macOS / Web'),
+                      subtitle: Text(
+                        'Android / iOS / Windows / Linux / macOS / Web',
+                      ),
                     ),
                     const Divider(height: 1),
                     const ListTile(

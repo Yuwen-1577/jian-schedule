@@ -22,9 +22,7 @@ class TimeColumn extends StatelessWidget {
       width: width,
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
-        border: Border(
-          right: BorderSide(color: cs.outlineVariant, width: 0.5),
-        ),
+        border: Border(right: BorderSide(color: cs.outlineVariant, width: 0.5)),
       ),
       child: Column(
         children: timeSlots.map((slot) {

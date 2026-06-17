@@ -5,7 +5,8 @@ class SettingsProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.light;
   bool _showWeekends = true;
   bool _useSystemFont = false;
-  String _ocrApiUrl = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+  String _ocrApiUrl =
+      'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
   String _ocrApiKey = '';
   String _ocrModelName = 'qwen-vl-max';
   bool _initialized = false;
@@ -27,7 +28,9 @@ class SettingsProvider extends ChangeNotifier {
     _themeMode = ThemeMode.values[themeIndex];
     _showWeekends = _prefs!.getBool('showWeekends') ?? true;
     _useSystemFont = _prefs!.getBool('useSystemFont') ?? false;
-    _ocrApiUrl = _prefs!.getString('ocrApiUrl') ?? 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+    _ocrApiUrl =
+        _prefs!.getString('ocrApiUrl') ??
+        'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
     _ocrApiKey = _prefs!.getString('ocrApiKey') ?? '';
     _ocrModelName = _prefs!.getString('ocrModelName') ?? 'qwen-vl-max';
     final seedColorValue = _prefs!.getInt('seedColor');
@@ -55,6 +58,7 @@ class SettingsProvider extends ChangeNotifier {
     await _prefs?.setInt('seedColor', color.toARGB32());
     notifyListeners();
   }
+
   Future<void> setUseSystemFont(bool use) async {
     _useSystemFont = use;
     await _prefs?.setBool('useSystemFont', use);

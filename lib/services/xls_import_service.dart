@@ -101,17 +101,19 @@ class XlsImportService {
     final result = <Course>[];
     int finalColorIndex = 0;
     for (final course in mergedCourses) {
-      result.add(Course(
-        id: uuidGen.v4(),
-        name: course.name,
-        room: course.room,
-        teacher: course.teacher,
-        day: course.day,
-        startPeriod: course.startPeriod,
-        duration: course.duration,
-        activeWeeks: List.from(course.activeWeeks),
-        colorValue: _getCourseColor(course.name, colorMap, finalColorIndex),
-      ));
+      result.add(
+        Course(
+          id: uuidGen.v4(),
+          name: course.name,
+          room: course.room,
+          teacher: course.teacher,
+          day: course.day,
+          startPeriod: course.startPeriod,
+          duration: course.duration,
+          activeWeeks: List.from(course.activeWeeks),
+          colorValue: _getCourseColor(course.name, colorMap, finalColorIndex),
+        ),
+      );
       finalColorIndex++;
     }
 
@@ -252,7 +254,11 @@ class XlsImportService {
       for (int c = 0; c < minCol; c++) {
         // 检查这一列是否有节次标注
         bool hasPeriodInfo = false;
-        for (int r = headerRow + 1; r < grid.length && r < headerRow + 20; r++) {
+        for (
+          int r = headerRow + 1;
+          r < grid.length && r < headerRow + 20;
+          r++
+        ) {
           if (c < grid[r].length && _detectPeriodFromRow(grid[r][c]) > 0) {
             hasPeriodInfo = true;
             break;
@@ -275,7 +281,17 @@ class XlsImportService {
   static bool _isSegmentHeader(String text) {
     final t = text.trim();
     if (t.isEmpty) return false;
-    final segments = ['上午', '下午', '晚上', '早', '午', '晚', 'morning', 'afternoon', 'evening'];
+    final segments = [
+      '上午',
+      '下午',
+      '晚上',
+      '早',
+      '午',
+      '晚',
+      'morning',
+      'afternoon',
+      'evening',
+    ];
     return segments.any((s) => t.toLowerCase().contains(s.toLowerCase()));
   }
 
@@ -394,25 +410,64 @@ class XlsImportService {
     final t = text.trim();
 
     const fullMatchMap = {
-      '星期一': 1, '周一': 1, '一': 1, 'Mon': 1, 'Monday': 1,
-      '星期二': 2, '周二': 2, '二': 2, 'Tue': 2, 'Tuesday': 2,
-      '星期三': 3, '周三': 3, '三': 3, 'Wed': 3, 'Wednesday': 3,
-      '星期四': 4, '周四': 4, '四': 4, 'Thu': 4, 'Thursday': 4,
-      '星期五': 5, '周五': 5, '五': 5, 'Fri': 5, 'Friday': 5,
-      '星期六': 6, '周六': 6, '六': 6, 'Sat': 6, 'Saturday': 6,
-      '星期日': 7, '星期天': 7, '周日': 7, '周天': 7, '日': 7, '天': 7, 'Sun': 7, 'Sunday': 7,
+      '星期一': 1,
+      '周一': 1,
+      '一': 1,
+      'Mon': 1,
+      'Monday': 1,
+      '星期二': 2,
+      '周二': 2,
+      '二': 2,
+      'Tue': 2,
+      'Tuesday': 2,
+      '星期三': 3,
+      '周三': 3,
+      '三': 3,
+      'Wed': 3,
+      'Wednesday': 3,
+      '星期四': 4,
+      '周四': 4,
+      '四': 4,
+      'Thu': 4,
+      'Thursday': 4,
+      '星期五': 5,
+      '周五': 5,
+      '五': 5,
+      'Fri': 5,
+      'Friday': 5,
+      '星期六': 6,
+      '周六': 6,
+      '六': 6,
+      'Sat': 6,
+      'Saturday': 6,
+      '星期日': 7,
+      '星期天': 7,
+      '周日': 7,
+      '周天': 7,
+      '日': 7,
+      '天': 7,
+      'Sun': 7,
+      'Sunday': 7,
     };
 
     if (fullMatchMap.containsKey(t)) return fullMatchMap[t]!;
 
     const containsMap = {
-      '星期一': 1, '周一': 1,
-      '星期二': 2, '周二': 2,
-      '星期三': 3, '周三': 3,
-      '星期四': 4, '周四': 4,
-      '星期五': 5, '周五': 5,
-      '星期六': 6, '周六': 6,
-      '星期日': 7, '星期天': 7, '周日': 7,
+      '星期一': 1,
+      '周一': 1,
+      '星期二': 2,
+      '周二': 2,
+      '星期三': 3,
+      '周三': 3,
+      '星期四': 4,
+      '周四': 4,
+      '星期五': 5,
+      '周五': 5,
+      '星期六': 6,
+      '周六': 6,
+      '星期日': 7,
+      '星期天': 7,
+      '周日': 7,
     };
     for (final entry in containsMap.entries) {
       if (t.contains(entry.key)) return entry.value;
@@ -534,9 +589,12 @@ class XlsImportService {
           !line.contains('周') &&
           !line.contains('节')) {
         final parenContent = _extractParenContent(line);
-        final isRoom = parenContent.isNotEmpty &&
-            RegExp(r'[楼号楼室教室栋层A-Za-z]\d', caseSensitive: false)
-                .hasMatch(parenContent);
+        final isRoom =
+            parenContent.isNotEmpty &&
+            RegExp(
+              r'[楼号楼室教室栋层A-Za-z]\d',
+              caseSensitive: false,
+            ).hasMatch(parenContent);
         if (!isRoom) {
           teacher = _extractTeacher(line);
           continue;
@@ -545,8 +603,7 @@ class XlsImportService {
 
       // 检测教室（含楼/号/室/教等关键词）
       if (room.isEmpty &&
-          RegExp(r'[楼号楼室教室栋层A-Z]\d', caseSensitive: false)
-              .hasMatch(line)) {
+          RegExp(r'[楼号楼室教室栋层A-Z]\d', caseSensitive: false).hasMatch(line)) {
         room = line;
         continue;
       }
@@ -617,17 +674,19 @@ class XlsImportService {
     // 转换为 Course 列表
     final merged = <Course>[];
     for (final group in mergeMap.values) {
-      merged.add(Course(
-        id: '',
-        name: group.name,
-        room: group.room,
-        teacher: group.teacher,
-        day: group.day,
-        startPeriod: group.startPeriod,
-        duration: group.duration,
-        activeWeeks: group.weeks,
-        colorValue: 0,
-      ));
+      merged.add(
+        Course(
+          id: '',
+          name: group.name,
+          room: group.room,
+          teacher: group.teacher,
+          day: group.day,
+          startPeriod: group.startPeriod,
+          duration: group.duration,
+          activeWeeks: group.weeks,
+          colorValue: 0,
+        ),
+      );
     }
 
     return merged;
@@ -644,8 +703,6 @@ class XlsImportService {
     return weeks;
   }
 
-
-
   /// 尝试从一行文本中解析周次信息
   /// 支持格式: "2-6,8-17([全])[01-02节]", "3,5,7([单])[03-04节]", "11(周)" 等
   @visibleForTesting
@@ -655,8 +712,9 @@ class XlsImportService {
     }
 
     // 1. 清理括号内容 + 残留节次信息（如 [01-02节] 未被括号匹配的 "01-02节"）
-    var cleaned =
-        line.replaceAll(RegExp(r'[\[\(（【][^\]\)）】]*[\]\)）】]'), '').trim();
+    var cleaned = line
+        .replaceAll(RegExp(r'[\[\(（【][^\]\)）】]*[\]\)）】]'), '')
+        .trim();
     // 移除 "数字-数字节" 和 "数字节" 模式（防止节次范围污染周次解析）
     cleaned = cleaned.replaceAll(RegExp(r'\d+\s*[-~—]\s*\d+\s*节'), '');
     cleaned = cleaned.replaceAll(RegExp(r'\d+\s*节'), '');
@@ -688,9 +746,7 @@ class XlsImportService {
 
     // 3. 判断单双周
     int weekType = 0;
-    if (line.contains('单周') ||
-        line.contains('([单])') ||
-        line.contains('[单]')) {
+    if (line.contains('单周') || line.contains('([单])') || line.contains('[单]')) {
       weekType = 1;
     } else if (line.contains('双周') ||
         line.contains('([双])') ||
