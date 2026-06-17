@@ -14,9 +14,6 @@ int stableId(String uuid) {
 const List<String> weekdayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 const List<String> weekdayShortNames = ['一', '二', '三', '四', '五', '六', '日'];
 
-// 单双周标签
-const List<String> weekTypeNames = ['全周', '单周', '双周'];
-
 // 预设课程颜色 (莫兰迪/柔和色系，适合玻璃拟物化)
 const List<int> presetColors = [
   0xFFBDB2B0, // 奶茶/暖灰

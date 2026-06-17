@@ -52,3 +52,8 @@ app.*.map.json
 
 # Key properties (signing credentials)
 android/key.properties
+
+# Temporary directories and files
+fonts_temp/
+fonts_temp2/
+code_review_report.md
