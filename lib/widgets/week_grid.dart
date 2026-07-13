@@ -227,18 +227,10 @@ class _GridBodyState extends State<_GridBody> {
                       );
                       if (course.day == d && course.startPeriod == s) return;
 
-                      final newCourse = Course(
-                        id: course.id,
-                        name: course.name,
-                        room: course.room,
-                        teacher: course.teacher,
+                      final newCourse = course.copyWith(
                         day: d,
                         startPeriod: s,
-                        duration: course.duration,
                         activeWeeks: List.from(course.activeWeeks),
-                        colorValue: course.colorValue,
-                        note: course.note,
-                        scheduleSetId: course.scheduleSetId,
                       );
 
                       final dayCourses = widget.provider

@@ -41,7 +41,7 @@ class Course {
   String get formattedWeeks {
     if (activeWeeks.isEmpty) return '未设置';
     final sorted = List<int>.from(activeWeeks)..sort();
-    
+
     // 判断是否为纯单周或纯双周且连续
     bool isOddEvenSequence = sorted.length > 1;
     for (int i = 0; i < sorted.length - 1; i++) {
@@ -50,7 +50,7 @@ class Course {
         break;
       }
     }
-    
+
     if (isOddEvenSequence) {
       if (sorted.first % 2 != 0) {
         return '第 ${sorted.first}-${sorted.last} 周 单周';
@@ -67,7 +67,7 @@ class Course {
         break;
       }
     }
-    
+
     if (isContinuous) {
       return '第 ${sorted.first}-${sorted.last} 周';
     }
@@ -160,11 +160,18 @@ class Course {
 
   static List<int> _parseActiveWeeks(Map<String, dynamic> map) {
     List<int> parsed = [];
-    if (map['activeWeeks'] != null) {
+    final rawWeeks = map['activeWeeks'];
+    if (rawWeeks != null) {
       try {
-        final decoded = jsonDecode(map['activeWeeks'] as String);
+        final decoded = rawWeeks is String ? jsonDecode(rawWeeks) : rawWeeks;
         if (decoded is List) {
-          parsed = decoded.map((e) => e as int).toList();
+          parsed =
+              decoded
+                  .whereType<num>()
+                  .map((week) => week.toInt())
+                  .toSet()
+                  .toList()
+                ..sort();
         }
       } catch (_) {}
     }

@@ -56,8 +56,6 @@ Future<void> backgroundCallback(Uri? uri) async {
     final prefs = await SharedPreferences.getInstance();
     final activeSetId = prefs.getString('activeSetId') ?? defaultSetId;
 
-    final courses = await db.getCoursesBySet(activeSetId);
-    final timeSlots = await db.getTimeSlots();
     final scheduleSets = await db.getScheduleSets();
 
     if (scheduleSets.isEmpty) return;
@@ -67,6 +65,11 @@ Future<void> backgroundCallback(Uri? uri) async {
       (s) => s.id == activeSetId,
       orElse: () => scheduleSets.first,
     );
+    if (activeSet.id != activeSetId) {
+      await prefs.setString('activeSetId', activeSet.id);
+    }
+    final courses = await db.getCoursesBySet(activeSet.id);
+    final timeSlots = await db.getTimeSlots();
     final today = DateTime.now().weekday;
     final currentWeek = calculateCurrentWeek(activeSet.semesterStart);
 

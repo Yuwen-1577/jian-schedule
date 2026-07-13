@@ -80,7 +80,7 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
     _duration = course?.duration ?? widget.initialDuration ?? 2;
     _activeWeeks = List.from(course?.activeWeeks ?? []);
     if (_activeWeeks.isEmpty && course == null) {
-      _activeWeeks = List.generate(20, (i) => i + 1);
+      _activeWeeks = List.generate(maxWeekCount, (i) => i + 1);
     }
     _colorValue = course?.colorValue ?? presetColors[0];
     final reminder = course?.reminderMinutesBefore ?? 15;

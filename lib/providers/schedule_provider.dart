@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,6 +22,8 @@ class ScheduleProvider extends ChangeNotifier {
   List<ScheduleSet> _scheduleSets = [];
   String _activeSetId = defaultSetId;
   bool _initialized = false;
+  int _syncRevision = 0;
+  Future<void> _backgroundSyncQueue = Future<void>.value();
 
   // Getters
   List<Course> get courses => List.unmodifiable(_courses);
@@ -53,7 +54,7 @@ class ScheduleProvider extends ChangeNotifier {
   // 获取今日课程
   List<Course> getTodayCourses() {
     final today = DateTime.now().weekday; // 1=Mon
-    return getCoursesForDay(_currentWeek, today);
+    return getCoursesForDay(calculateCurrentWeek(_semesterStart), today);
   }
 
   // 计算当前周(基于学期开始日期)
@@ -72,9 +73,7 @@ class ScheduleProvider extends ChangeNotifier {
 
   /// 计算指定日期对应的教学周
   int calculateWeekForDate(DateTime date) {
-    final diff = date.difference(_semesterStart).inDays;
-    final week = (diff / 7).ceil();
-    return week.clamp(1, maxWeekCount);
+    return calculateTeachingWeek(_semesterStart, date);
   }
 
   // 切换周次
@@ -92,6 +91,7 @@ class ScheduleProvider extends ChangeNotifier {
       await _db.updateScheduleSet(set);
     }
     recalculateWeek();
+    _syncAll();
   }
 
   // 加载数据
@@ -112,6 +112,9 @@ class ScheduleProvider extends ChangeNotifier {
     } else if (_scheduleSets.isNotEmpty &&
         !_scheduleSets.any((s) => s.id == _activeSetId)) {
       _activeSetId = _scheduleSets.first.id;
+    }
+    if (_scheduleSets.isNotEmpty && savedId != _activeSetId) {
+      await _prefs!.setString('activeSetId', _activeSetId);
     }
 
     // 设置学期开始日期
@@ -135,6 +138,7 @@ class ScheduleProvider extends ChangeNotifier {
   // 切换课表集
   Future<void> switchSet(String setId) async {
     if (setId == _activeSetId) return;
+    if (!_scheduleSets.any((set) => set.id == setId)) return;
     _activeSetId = setId;
     // 持久化当前活跃集 ID，供小部件背景回调读取
     await _prefs?.setString('activeSetId', _activeSetId);
@@ -189,7 +193,12 @@ class ScheduleProvider extends ChangeNotifier {
   Future<void> addCourse(Course course) async {
     course.scheduleSetId = _activeSetId;
     await _db.insertCourse(course);
-    _courses.add(course);
+    final existingIndex = _courses.indexWhere((item) => item.id == course.id);
+    if (existingIndex == -1) {
+      _courses.add(course);
+    } else {
+      _courses[existingIndex] = course;
+    }
     notifyListeners();
     _syncAll();
   }
@@ -233,13 +242,27 @@ class ScheduleProvider extends ChangeNotifier {
     _timeSlots.sort((a, b) => a.period.compareTo(b.period));
     _maxPeriod = _timeSlots.isNotEmpty ? _timeSlots.last.period : 12;
     notifyListeners();
+    _syncAll();
   }
 
   // 保存所有时间段
   Future<void> saveTimeSlots(List<TimeSlot> slots) async {
-    await _db.saveTimeSlots(slots);
-    _timeSlots = List.from(slots);
-    _maxPeriod = slots.isNotEmpty ? slots.last.period : 12;
+    final normalized =
+        slots
+            .map(
+              (slot) => TimeSlot(
+                period: slot.period,
+                startTime: slot.startTime,
+                endTime: slot.endTime,
+              ),
+            )
+            .toList()
+          ..sort((a, b) => a.period.compareTo(b.period));
+    await _db.saveTimeSlots(normalized);
+    _timeSlots = normalized;
+    _maxPeriod = normalized.isEmpty
+        ? 12
+        : normalized.map((slot) => slot.period).reduce((a, b) => a > b ? a : b);
     notifyListeners();
     _syncAll();
   }
@@ -255,14 +278,35 @@ class ScheduleProvider extends ChangeNotifier {
   }
 
   // 导入课程到当前课表集
-  Future<void> importCoursesToActiveSet(List<Course> courses) async {
+  Future<int> importCoursesToActiveSet(List<Course> courses) async {
+    final fingerprints = _courses.map(_courseFingerprint).toSet();
+    final coursesToInsert = <Course>[];
     for (final course in courses) {
       course.scheduleSetId = _activeSetId;
+      if (fingerprints.add(_courseFingerprint(course))) {
+        coursesToInsert.add(course);
+      }
     }
-    await _db.insertCourses(courses);
-    _courses.addAll(courses);
+    if (coursesToInsert.isEmpty) return 0;
+
+    await _db.insertCourses(coursesToInsert);
+    await _loadCoursesForActiveSet();
     notifyListeners();
     _syncAll();
+    return coursesToInsert.length;
+  }
+
+  String _courseFingerprint(Course course) {
+    final weeks = List<int>.from(course.activeWeeks)..sort();
+    return [
+      course.name.trim(),
+      course.teacher.trim(),
+      course.room.trim(),
+      course.day,
+      course.startPeriod,
+      course.duration,
+      weeks.join(','),
+    ].join('|');
   }
 
   // 同步桌面小部件数据
@@ -273,12 +317,16 @@ class ScheduleProvider extends ChangeNotifier {
       await WidgetService.syncSemesterStart(_semesterStart);
 
       // 获取今日课程
-      final todayCourses = getTodayCourses();
+      final teachingWeek = calculateCurrentWeek(_semesterStart);
+      final todayCourses = getCoursesForDay(
+        teachingWeek,
+        DateTime.now().weekday,
+      );
       await WidgetService.syncAllCourses(_courses, _timeSlots);
       await WidgetService.syncTodayCourses(todayCourses, _timeSlots);
 
       // 同步周课表网格
-      await WidgetService.syncWeekGrid(_courses, _currentWeek);
+      await WidgetService.syncWeekGrid(_courses, teachingWeek);
 
       // 更新所有小部件
       await WidgetService.updateAll();
@@ -297,7 +345,7 @@ class ScheduleProvider extends ChangeNotifier {
       await NotificationService().scheduleWeeklyReminders(
         courses: _courses,
         timeSlots: _timeSlots,
-        currentWeek: _currentWeek,
+        currentWeek: calculateCurrentWeek(_semesterStart),
         semesterStart: _semesterStart,
       );
     } catch (e) {
@@ -307,15 +355,14 @@ class ScheduleProvider extends ChangeNotifier {
 
   // 同步所有后台任务（小部件 + 通知）
   void _syncAll() {
-    unawaited(
-      _syncWidgetData().catchError((e) {
-        debugPrint('Widget同步失败: $e');
-      }),
-    );
-    unawaited(
-      _scheduleNotifications().catchError((e) {
-        debugPrint('通知调度失败: $e');
-      }),
-    );
+    final revision = ++_syncRevision;
+    _backgroundSyncQueue = _backgroundSyncQueue
+        .then((_) async {
+          if (revision != _syncRevision) return;
+          await Future.wait([_syncWidgetData(), _scheduleNotifications()]);
+        })
+        .catchError((Object error, StackTrace stackTrace) {
+          debugPrint('后台同步失败: $error');
+        });
   }
 }

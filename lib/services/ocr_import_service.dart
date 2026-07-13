@@ -22,7 +22,7 @@ class OcrImportService {
    - activeWeeks: 上课的周次列表（整数数组）。
      - 若写明"1-8周"，则解析为 [1,2,3,4,5,6,7,8]
      - 若写明"1-8周单周"，则解析为 [1,3,5,7]
-     - 若未明确标出周次，默认假定为 [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+     - 若未明确标出周次，默认假定为 1-25 周
 
 输出要求：
 必须只输出以下格式的纯净 JSON，不要包含任何 markdown 代码块（如 ```json 等），直接返回 `{` 开头的数据。
@@ -107,7 +107,14 @@ class OcrImportService {
 
       return courseList.map((c) {
         final List<dynamic> weeksDynamic = c['activeWeeks'] ?? [];
-        final List<int> weeks = weeksDynamic.map((e) => e as int).toList();
+        final List<int> weeks =
+            weeksDynamic
+                .whereType<num>()
+                .map((week) => week.toInt())
+                .where((week) => week >= 1 && week <= maxWeekCount)
+                .toSet()
+                .toList()
+              ..sort();
         final randomColor = presetColors[Random().nextInt(presetColors.length)];
 
         return Course(
@@ -118,7 +125,9 @@ class OcrImportService {
           day: c['day'] ?? 1,
           startPeriod: c['startPeriod'] ?? 1,
           duration: c['duration'] ?? 1,
-          activeWeeks: weeks,
+          activeWeeks: weeks.isEmpty
+              ? List.generate(maxWeekCount, (i) => i + 1)
+              : weeks,
           colorValue: randomColor,
         );
       }).toList();

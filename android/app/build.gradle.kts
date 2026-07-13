@@ -12,6 +12,7 @@ val keystoreFile = file("key.properties")
 if (keystoreFile.exists()) {
     keystoreFile.inputStream().use { keystoreProperties.load(it) }
 }
+val useDebugSigning = providers.gradleProperty("useDebugSigning").orNull == "true"
 
 android {
     namespace = "com.suda.yzune.class_schedule"
@@ -51,7 +52,11 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (useDebugSigning) {
+                signingConfigs.getByName("debug")
+            } else {
+                signingConfigs.getByName("release")
+            }
         }
     }
 

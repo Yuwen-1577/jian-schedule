@@ -269,11 +269,10 @@ class DatabaseService {
 
   Future<void> updateTimeSlot(TimeSlot slot) async {
     final db = await database;
-    await db.update(
+    await db.insert(
       'time_slots',
       slot.toMap(),
-      where: 'period = ?',
-      whereArgs: [slot.period],
+      conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
 

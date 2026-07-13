@@ -178,12 +178,16 @@ class DataSection extends StatelessWidget {
     }
   }
 
-  void _clearAllData(BuildContext context, ScheduleProvider provider) async {
+  Future<void> _clearAllData(
+    BuildContext context,
+    ScheduleProvider provider,
+  ) async {
+    final setName = provider.activeSet?.name ?? '当前课表';
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('确认清除'),
-        content: const Text('此操作将删除所有课程数据，不可恢复。确定继续？'),
+        content: Text('此操作只会删除“$setName”中的所有课程，不可恢复。确定继续？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -203,11 +207,10 @@ class DataSection extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('所有数据已清除')));
+        ).showSnackBar(SnackBar(content: Text('已清空“$setName”的课程')));
       }
     }
   }
-
 
   void _showError(BuildContext context, String msg) {
     if (!context.mounted) return;
@@ -217,7 +220,6 @@ class DataSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.read<ScheduleProvider>();
-
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -254,10 +256,10 @@ class DataSection extends StatelessWidget {
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
                 title: const Text(
-                  '清除所有数据',
+                  '清空当前课表课程',
                   style: TextStyle(color: Colors.red),
                 ),
-                subtitle: const Text('清空所有课表集、课程和时间设置'),
+                subtitle: const Text('保留其他课表集和时间设置'),
                 trailing: const Icon(Icons.chevron_right, color: Colors.red),
                 onTap: () => _clearAllData(context, provider),
               ),

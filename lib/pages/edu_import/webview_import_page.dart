@@ -99,12 +99,19 @@ class _WebviewImportPageState extends State<WebviewImportPage> {
 
       if (confirmed == true && mounted) {
         final provider = context.read<ScheduleProvider>();
-        await provider.importCoursesToActiveSet(courses);
+        final importedCount = await provider.importCoursesToActiveSet(courses);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('成功导入 ${courses.length} 门课程！')),
-          );
+          final messenger = ScaffoldMessenger.of(context);
           Navigator.pop(context); // 返回上一页
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(
+                importedCount == 0
+                    ? '没有发现新课程，已跳过重复数据'
+                    : '成功导入 $importedCount 门课程！',
+              ),
+            ),
+          );
         }
       }
     } catch (e) {

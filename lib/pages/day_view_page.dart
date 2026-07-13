@@ -45,6 +45,13 @@ class _DayViewPageState extends State<DayViewPage> {
     });
   }
 
+  DateTime _mondayForPage(int pageIndex) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final currentWeekMonday = today.subtract(Duration(days: today.weekday - 1));
+    return currentWeekMonday.add(Duration(days: (pageIndex - 1000) * 7));
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ScheduleProvider>();
@@ -107,16 +114,18 @@ class _DayViewPageState extends State<DayViewPage> {
             ),
             child: PageView.builder(
               controller: _pageController,
+              onPageChanged: (index) {
+                final nextDate = _mondayForPage(
+                  index,
+                ).add(Duration(days: _selectedDate.weekday - 1));
+                if (!nextDate.isAtSameMomentAs(_selectedDate)) {
+                  setState(() => _selectedDate = nextDate);
+                }
+              },
               itemBuilder: (context, index) {
-                final weekOffset = index - 1000;
                 final now = DateTime.now();
                 final today = DateTime(now.year, now.month, now.day);
-                final currentWeekMonday = today.subtract(
-                  Duration(days: today.weekday - 1),
-                );
-                final pageMonday = currentWeekMonday.add(
-                  Duration(days: weekOffset * 7),
-                );
+                final pageMonday = _mondayForPage(index);
 
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -208,16 +217,18 @@ class _TimelineViewState extends State<_TimelineView> {
 
   Timer? _timer;
   late ScrollController _scrollController;
+  late String _timeSlotsSignature;
 
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController();
+    _timeSlotsSignature = _buildTimeSlotsSignature();
     _calculateHours();
     _startTimer();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+      if (!mounted || !_scrollController.hasClients) return;
       final now = TimeOfDay.now();
       final offset =
           ((now.hour * 60 + now.minute) - _startHour * 60) * hourHeight / 60.0;
@@ -232,9 +243,17 @@ class _TimelineViewState extends State<_TimelineView> {
   @override
   void didUpdateWidget(_TimelineView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.provider.timeSlots != widget.provider.timeSlots) {
+    final signature = _buildTimeSlotsSignature();
+    if (signature != _timeSlotsSignature) {
+      _timeSlotsSignature = signature;
       _calculateHours();
     }
+  }
+
+  String _buildTimeSlotsSignature() {
+    return widget.provider.timeSlots
+        .map((slot) => '${slot.period}:${slot.startTime}-${slot.endTime}')
+        .join('|');
   }
 
   @override
@@ -682,7 +701,8 @@ class _DayCourseCardState extends State<_DayCourseCard>
     // 正在进行：发光边框
     if (widget.status == CourseStatus.ongoing) {
       return GestureDetector(
-        onTap: () => CourseDetailBottomSheet.show(context, course: widget.course),
+        onTap: () =>
+            CourseDetailBottomSheet.show(context, course: widget.course),
         child: AnimatedBuilder(
           animation: _glowAnimation,
           builder: (context, child) {
@@ -709,7 +729,8 @@ class _DayCourseCardState extends State<_DayCourseCard>
     // 即将开始：虚线边框
     if (widget.status == CourseStatus.upcoming) {
       return GestureDetector(
-        onTap: () => CourseDetailBottomSheet.show(context, course: widget.course),
+        onTap: () =>
+            CourseDetailBottomSheet.show(context, course: widget.course),
         child: CustomPaint(
           painter: _DashedBorderPainter(color: baseColor),
           child: cardContent,

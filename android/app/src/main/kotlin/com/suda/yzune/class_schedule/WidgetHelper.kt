@@ -86,7 +86,7 @@ object WidgetHelper {
             val now = java.util.Date()
             val diffMs = now.time - startDate.time
             val diffDays = TimeUnit.MILLISECONDS.toDays(diffMs)
-            if (diffDays < 0) 1 else Math.ceil(diffDays / 7.0).toInt().coerceAtLeast(1).coerceAtMost(25)
+            if (diffDays < 0) 1 else (diffDays / 7 + 1).toInt().coerceAtMost(25)
         } catch (e: Exception) {
             // 学期开始日期解析失败，返回第 1 周
             android.util.Log.w("WidgetHelper", "Failed to parse semester start date", e)
@@ -279,8 +279,12 @@ object WidgetHelper {
                 }
             }
 
-            val course = active ?: next ?: sorted.first()
-            val label = if (active != null) "当前课程" else "下一节课"
+            val course = active ?: next ?: sorted.last()
+            val label = when {
+                active != null -> "当前课程"
+                next != null -> "下一节课"
+                else -> "今日课程已结束"
+            }
             views.setTextViewText(R.id.widget_compact_label, label)
             views.setTextViewText(R.id.widget_compact_name, course.name)
 
@@ -352,9 +356,6 @@ object WidgetHelper {
             )
 
             val todayDay = getTodayDayOfWeek()
-            val blockHeightPx = dpToPx(context, 14f)
-            val blockMarginPx = dpToPx(context, 1f)
-
             for (dayIndex in 0 until 7) {
                 val cellId = cellIds[dayIndex]
                 views.removeAllViews(cellId)

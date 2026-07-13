@@ -5,11 +5,13 @@ import '../providers/schedule_provider.dart';
 import '../providers/settings_provider.dart';
 
 class OcrImportHelper {
-  static void importFromOcr(
+  static Future<void> importFromOcr(
     BuildContext context,
     ScheduleProvider provider,
     SettingsProvider settings,
   ) async {
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+    var loadingOpen = false;
     try {
       if (settings.ocrApiKey.isEmpty) {
         _showError(context, '请先配置 OCR 大模型 API Key');
@@ -26,6 +28,7 @@ class OcrImportHelper {
 
       showDialog(
         context: context,
+        useRootNavigator: true,
         barrierDismissible: false,
         builder: (_) => const AlertDialog(
           content: Row(
@@ -37,6 +40,7 @@ class OcrImportHelper {
           ),
         ),
       );
+      loadingOpen = true;
 
       final courses = await OcrImportService.parseImage(
         filePath,
@@ -45,8 +49,11 @@ class OcrImportHelper {
         settings.ocrModelName,
       );
 
+      if (loadingOpen && rootNavigator.mounted) {
+        rootNavigator.pop();
+        loadingOpen = false;
+      }
       if (!context.mounted) return;
-      Navigator.pop(context); // 关闭加载
 
       if (courses.isEmpty) {
         _showError(context, '未识别到任何课程');
@@ -72,18 +79,25 @@ class OcrImportHelper {
       );
 
       if (confirmed == true) {
-        await provider.importCoursesToActiveSet(courses);
+        final importedCount = await provider.importCoursesToActiveSet(courses);
         if (context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('成功导入 ${courses.length} 门课程')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                importedCount == 0
+                    ? '没有发现新课程，已跳过重复数据'
+                    : '成功导入 $importedCount 门课程',
+              ),
+            ),
+          );
         }
       }
     } catch (e) {
-      if (context.mounted) {
-        Navigator.pop(context); // 关闭加载（如果还在）
-        _showError(context, '识别失败: $e');
+      if (loadingOpen && rootNavigator.mounted) {
+        rootNavigator.pop();
+        loadingOpen = false;
       }
+      if (context.mounted) _showError(context, '识别失败: $e');
     }
   }
 

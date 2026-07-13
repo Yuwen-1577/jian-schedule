@@ -14,6 +14,9 @@ void main() {
       expect(TimeUtils.parseMinutes('800'), 0);
       expect(TimeUtils.parseMinutes('abc:def'), 0);
       expect(TimeUtils.parseMinutes(''), 0);
+      expect(TimeUtils.parseMinutes('24:00'), 0);
+      expect(TimeUtils.parseMinutes('08:60'), 0);
+      expect(TimeUtils.parseMinutes('8:00:30'), 0);
     });
   });
 }

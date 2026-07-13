@@ -105,53 +105,67 @@
             android:layout_height="0dp"
             android:layout_weight="1">
 
-            <FrameLayout
+            <LinearLayout
                 android:id="@+id/week_cell_mon"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical"
                 android:padding="2dp" />
 
-            <FrameLayout
+            <LinearLayout
                 android:id="@+id/week_cell_tue"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical"
                 android:padding="2dp" />
 
-            <FrameLayout
+            <LinearLayout
                 android:id="@+id/week_cell_wed"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical"
                 android:padding="2dp" />
 
-            <FrameLayout
+            <LinearLayout
                 android:id="@+id/week_cell_thu"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical"
                 android:padding="2dp" />
 
-            <FrameLayout
+            <LinearLayout
                 android:id="@+id/week_cell_fri"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical"
                 android:padding="2dp" />
 
-            <FrameLayout
+            <LinearLayout
                 android:id="@+id/week_cell_sat"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical"
                 android:padding="2dp" />
 
-            <FrameLayout
+            <LinearLayout
                 android:id="@+id/week_cell_sun"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical"
                 android:padding="2dp" />
 
         </TableRow>

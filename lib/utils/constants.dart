@@ -52,12 +52,23 @@ DateTime get defaultSemesterStart {
   ).subtract(Duration(days: daysFromMonday));
 }
 
+// 计算指定日期对应的教学周。
+// 统一截断为日期，避免学期起始时间的时分秒导致边界偏差。
+int calculateTeachingWeek(DateTime semesterStart, DateTime date) {
+  final startDate = DateTime(
+    semesterStart.year,
+    semesterStart.month,
+    semesterStart.day,
+  );
+  final targetDate = DateTime(date.year, date.month, date.day);
+  final diffDays = targetDate.difference(startDate).inDays;
+  final week = diffDays < 0 ? 1 : diffDays ~/ 7 + 1;
+  return week.clamp(1, maxWeekCount);
+}
+
 // 计算当前教学周
 int calculateCurrentWeek(DateTime semesterStart) {
-  final now = DateTime.now();
-  final diff = now.difference(semesterStart).inDays;
-  final week = (diff / 7).ceil();
-  return week.clamp(1, maxWeekCount);
+  return calculateTeachingWeek(semesterStart, DateTime.now());
 }
 
 // 默认课表集 ID

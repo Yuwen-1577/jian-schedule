@@ -89,10 +89,8 @@ class AboutPage extends StatelessWidget {
                     const Divider(height: 1),
                     const ListTile(
                       leading: Icon(Icons.phone_android),
-                      title: Text('支持平台'),
-                      subtitle: Text(
-                        'Android / iOS / Windows / Linux / macOS / Web',
-                      ),
+                      title: Text('平台状态'),
+                      subtitle: Text('Android 已验证 · 其他平台为实验性支持'),
                     ),
                     const Divider(height: 1),
                     const ListTile(

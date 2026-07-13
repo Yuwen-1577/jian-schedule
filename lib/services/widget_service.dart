@@ -17,17 +17,12 @@ class WidgetService {
     List<Course> courses,
     List<TimeSlot> timeSlots,
   ) {
+    final slotsByPeriod = {for (final slot in timeSlots) slot.period: slot};
     return courses.map((course) {
       String startTime = '';
       String endTime = '';
-      final startIdx = course.startPeriod - 1;
-      final endIdx = course.endPeriod - 1;
-      if (startIdx >= 0 && startIdx < timeSlots.length) {
-        startTime = timeSlots[startIdx].startTime;
-      }
-      if (endIdx >= 0 && endIdx < timeSlots.length) {
-        endTime = timeSlots[endIdx].endTime;
-      }
+      startTime = slotsByPeriod[course.startPeriod]?.startTime ?? '';
+      endTime = slotsByPeriod[course.endPeriod]?.endTime ?? '';
 
       return {
         'id': stableId(course.id),
@@ -80,7 +75,6 @@ class WidgetService {
       _timeSlotsKey,
       jsonEncode(serializeTimeSlotsForWidget(timeSlots)),
     );
-    await _updateAllProviders();
   }
 
   /// 同步今日课程到桌面小部件
@@ -98,9 +92,6 @@ class WidgetService {
       _timeSlotsKey,
       jsonEncode(serializeTimeSlotsForWidget(timeSlots)),
     );
-
-    // 更新所有相关的小部件 provider
-    await _updateAllProviders();
   }
 
   /// 同步当前课程进度到桌面小部件
@@ -113,18 +104,11 @@ class WidgetService {
     Map<String, dynamic>? progressData;
 
     if (currentCourse != null) {
-      final startSlotIndex = currentCourse.startPeriod - 1;
-      final endSlotIndex = currentCourse.endPeriod - 1;
+      final slotsByPeriod = {for (final slot in timeSlots) slot.period: slot};
 
-      String startTime = '';
-      String endTime = '';
-
-      if (startSlotIndex >= 0 && startSlotIndex < timeSlots.length) {
-        startTime = timeSlots[startSlotIndex].startTime;
-      }
-      if (endSlotIndex >= 0 && endSlotIndex < timeSlots.length) {
-        endTime = timeSlots[endSlotIndex].endTime;
-      }
+      final startTime =
+          slotsByPeriod[currentCourse.startPeriod]?.startTime ?? '';
+      final endTime = slotsByPeriod[currentCourse.endPeriod]?.endTime ?? '';
 
       progressData = {
         'name': currentCourse.name,
@@ -189,9 +173,6 @@ class WidgetService {
     }
 
     await HomeWidget.saveWidgetData<String>('weekGrid', jsonEncode(weekGrid));
-
-    // 更新周视图小部件
-    await HomeWidget.updateWidget(name: 'ScheduleWidgetWeekProvider');
   }
 
   /// 更新所有小部件 provider

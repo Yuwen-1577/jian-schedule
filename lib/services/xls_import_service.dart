@@ -533,7 +533,7 @@ class XlsImportService {
     String name = '';
     String teacher = '';
     String room = '';
-    int wStart = 1, wEnd = 20, wType = 0;
+    List<int> activeWeeks = List.generate(maxWeekCount, (i) => i + 1);
     int duration = 2; // 默认值，会被实际检测覆盖
 
     // 扫描所有行找节次范围
@@ -554,6 +554,7 @@ class XlsImportService {
       if (info['name']!.isNotEmpty) name = info['name']!;
       if (info['teacher']!.isNotEmpty) teacher = info['teacher']!;
       if (info['room']!.isNotEmpty) room = info['room']!;
+      activeWeeks = tryParseWeekLine(lines[0]) ?? activeWeeks;
       return Course(
         id: '',
         name: name,
@@ -562,7 +563,7 @@ class XlsImportService {
         day: day,
         startPeriod: startPeriod,
         duration: duration,
-        activeWeeks: _getWeeksInRange(wStart, wEnd, wType),
+        activeWeeks: activeWeeks,
         colorValue: _getCourseColor(name, colorMap, colorIndex),
       );
     }
@@ -577,9 +578,7 @@ class XlsImportService {
       // 检测周次信息
       final weekInfo = tryParseWeekLine(line);
       if (weekInfo != null) {
-        wStart = weekInfo['startWeek']!;
-        wEnd = weekInfo['endWeek']!;
-        wType = weekInfo['weekType']!;
+        activeWeeks = weekInfo;
         continue;
       }
 
@@ -631,7 +630,7 @@ class XlsImportService {
       day: day,
       startPeriod: startPeriod,
       duration: duration,
-      activeWeeks: _getWeeksInRange(wStart, wEnd, wType),
+      activeWeeks: activeWeeks,
       colorValue: _getCourseColor(name, colorMap, colorIndex),
     );
   }
@@ -692,21 +691,10 @@ class XlsImportService {
     return merged;
   }
 
-  /// 获取范围内的周次列表
-  static List<int> _getWeeksInRange(int start, int end, int weekType) {
-    final weeks = <int>[];
-    for (int w = start; w <= end; w++) {
-      if (weekType == 1 && w % 2 == 0) continue; // 单周，跳过偶数
-      if (weekType == 2 && w % 2 == 1) continue; // 双周，跳过奇数
-      weeks.add(w);
-    }
-    return weeks;
-  }
-
   /// 尝试从一行文本中解析周次信息
   /// 支持格式: "2-6,8-17([全])[01-02节]", "3,5,7([单])[03-04节]", "11(周)" 等
   @visibleForTesting
-  static Map<String, int>? tryParseWeekLine(String line) {
+  static List<int>? tryParseWeekLine(String line) {
     if (!line.contains('周') && !line.toLowerCase().contains('week')) {
       return null;
     }
@@ -721,7 +709,7 @@ class XlsImportService {
     cleaned = cleaned.trim();
 
     // 2. 提取所有周次范围和单独周
-    final weeks = <int>[];
+    final weeks = <int>{};
 
     // 格式: "2-6", "8-17", "1-16"
     final rangePattern = RegExp(r'(\d+)\s*[-~—]\s*(\d+)');
@@ -729,7 +717,7 @@ class XlsImportService {
       final start = int.parse(m.group(1)!);
       final end = int.parse(m.group(2)!);
       for (int i = start; i <= end; i++) {
-        weeks.add(i);
+        if (i >= 1 && i <= maxWeekCount) weeks.add(i);
       }
     }
 
@@ -737,29 +725,23 @@ class XlsImportService {
     final singlePattern = RegExp(r'(\d+)');
     for (final m in singlePattern.allMatches(cleaned)) {
       final week = int.parse(m.group(1)!);
-      if (!weeks.contains(week)) {
-        weeks.add(week);
-      }
+      if (week >= 1 && week <= maxWeekCount) weeks.add(week);
     }
 
     if (weeks.isEmpty) return null;
 
     // 3. 判断单双周
-    int weekType = 0;
-    if (line.contains('单周') || line.contains('([单])') || line.contains('[单]')) {
-      weekType = 1;
-    } else if (line.contains('双周') ||
-        line.contains('([双])') ||
-        line.contains('[双]')) {
-      weekType = 2;
-    }
+    final isOdd =
+        line.contains('单周') || line.contains('([单])') || line.contains('[单]');
+    final isEven =
+        line.contains('双周') || line.contains('([双])') || line.contains('[双]');
 
-    weeks.sort();
-    return {
-      'startWeek': weeks.first,
-      'endWeek': weeks.last,
-      'weekType': weekType,
-    };
+    final result = weeks.where((week) {
+      if (isOdd) return week.isOdd;
+      if (isEven) return week.isEven;
+      return true;
+    }).toList()..sort();
+    return result.isEmpty ? null : result;
   }
 
   /// 从单行文本中尝试提取课程信息

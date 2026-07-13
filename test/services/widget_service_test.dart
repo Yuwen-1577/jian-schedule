@@ -35,5 +35,28 @@ void main() {
       expect(payload.single['startTime'], '08:55');
       expect(payload.single['endTime'], '10:45');
     });
+
+    test('looks up time slots by period instead of list position', () {
+      final course = Course(
+        id: 'course-period-map',
+        name: '非连续节次',
+        day: 1,
+        startPeriod: 3,
+        duration: 2,
+        activeWeeks: [1],
+      );
+      final timeSlots = [
+        TimeSlot(period: 1, startTime: '08:00', endTime: '08:45'),
+        TimeSlot(period: 3, startTime: '10:00', endTime: '10:45'),
+        TimeSlot(period: 4, startTime: '10:55', endTime: '11:40'),
+      ];
+
+      final payload = WidgetService.serializeCoursesForWidget([
+        course,
+      ], timeSlots);
+
+      expect(payload.single['startTime'], '10:00');
+      expect(payload.single['endTime'], '11:40');
+    });
   });
 }

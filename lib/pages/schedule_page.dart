@@ -24,6 +24,7 @@ class _SchedulePageState extends State<SchedulePage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late PageController _pageController;
   late ScrollController _weekScrollController;
+  String? _scheduleContextSignature;
 
   @override
   void initState() {
@@ -51,6 +52,8 @@ class _SchedulePageState extends State<SchedulePage> {
     if (!provider.initialized) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
+
+    _syncPageWithScheduleContext(provider);
 
     return Scaffold(
       key: _scaffoldKey,
@@ -152,10 +155,7 @@ class _SchedulePageState extends State<SchedulePage> {
                 value: 'webview',
                 child: Text('从教务系统导入 (网页抓取)'),
               ),
-              const PopupMenuItem(
-                value: 'ocr',
-                child: Text('从课表截图导入 (智能识别)'),
-              ),
+              const PopupMenuItem(value: 'ocr', child: Text('从课表截图导入 (智能识别)')),
               const PopupMenuItem(
                 value: 'excel',
                 child: Text('从 Excel 导入 (.xlsx)'),
@@ -360,5 +360,24 @@ class _SchedulePageState extends State<SchedulePage> {
         curve: Curves.easeInOut,
       );
     }
+  }
+
+  void _syncPageWithScheduleContext(ScheduleProvider provider) {
+    final start = provider.semesterStart;
+    final signature =
+        '${provider.activeSetId}|${start.year}-${start.month}-${start.day}';
+    if (_scheduleContextSignature == signature) return;
+
+    _scheduleContextSignature = signature;
+    final targetWeek = provider.currentWeek;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _scheduleContextSignature != signature) return;
+      if (provider.currentWeek != targetWeek) return;
+      if (_pageController.hasClients &&
+          _pageController.page?.round() != targetWeek - 1) {
+        _pageController.jumpToPage(targetWeek - 1);
+      }
+      _syncWeekScroll(targetWeek);
+    });
   }
 }

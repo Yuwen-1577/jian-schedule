@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import '../models/course.dart';
@@ -23,6 +24,12 @@ class NotificationService {
 
     // 初始化时区数据
     tz.initializeTimeZones();
+    try {
+      final localTimezone = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(localTimezone.identifier));
+    } catch (e) {
+      debugPrint('获取设备时区失败，将使用 UTC: $e');
+    }
 
     // Android 初始化
     const androidSettings = AndroidInitializationSettings(
@@ -103,10 +110,14 @@ class NotificationService {
       ); // day 从 1 开始
 
       // 获取上课开始时间
-      final startIdx = course.startPeriod - 1;
-      if (startIdx < 0 || startIdx >= timeSlots.length) continue;
-
-      final slot = timeSlots[startIdx];
+      TimeSlot? slot;
+      for (final candidate in timeSlots) {
+        if (candidate.period == course.startPeriod) {
+          slot = candidate;
+          break;
+        }
+      }
+      if (slot == null) continue;
       final timeParts = slot.startTime.split(':');
       if (timeParts.length < 2) continue;
       final hour = int.tryParse(timeParts[0]);

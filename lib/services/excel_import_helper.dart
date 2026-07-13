@@ -8,6 +8,8 @@ class ExcelImportHelper {
     BuildContext context,
     ScheduleProvider provider,
   ) async {
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+    var loadingOpen = false;
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -23,14 +25,19 @@ class ExcelImportHelper {
       // 显示加载中
       showDialog(
         context: context,
+        useRootNavigator: true,
         barrierDismissible: false,
         builder: (_) => const Center(child: CircularProgressIndicator()),
       );
+      loadingOpen = true;
 
       final courses = await XlsImportService.parseFile(filePath);
 
+      if (loadingOpen && rootNavigator.mounted) {
+        rootNavigator.pop();
+        loadingOpen = false;
+      }
       if (!context.mounted) return;
-      Navigator.pop(context); // 关闭加载
 
       if (courses.isEmpty) {
         _showError(context, '未解析到任何课程，请检查文件格式');
@@ -90,18 +97,25 @@ class ExcelImportHelper {
       );
 
       if (confirmed == true) {
-        await provider.importCoursesToActiveSet(courses);
+        final importedCount = await provider.importCoursesToActiveSet(courses);
         if (context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('成功导入 ${courses.length} 门课程')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                importedCount == 0
+                    ? '没有发现新课程，已跳过重复数据'
+                    : '成功导入 $importedCount 门课程',
+              ),
+            ),
+          );
         }
       }
     } catch (e) {
-      if (context.mounted) {
-        Navigator.pop(context); // 关闭加载（如果还在）
-        _showError(context, '导入失败: $e');
+      if (loadingOpen && rootNavigator.mounted) {
+        rootNavigator.pop();
+        loadingOpen = false;
       }
+      if (context.mounted) _showError(context, '导入失败: $e');
     }
   }
 

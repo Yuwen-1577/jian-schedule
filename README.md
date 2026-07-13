@@ -1,6 +1,6 @@
 # 简课表 (Simple Schedule)
 
-跨平台课程表管理应用，支持 Android / iOS / Windows / Linux / macOS / Web。
+跨平台课程表管理应用。当前以 Android 为主要发布平台；iOS / Windows / Linux / macOS / Web 仍属实验性支持。
 
 ## 功能
 
@@ -63,6 +63,15 @@ lib/
 
 ## 快速开始
 
+### 平台状态
+
+| 平台 | 状态 |
+|------|------|
+| Android | 主要发布平台，已验证 Release 编译和 APK 打包 |
+| iOS / macOS | 实验性，原生依赖与网络权限仍需完整验证 |
+| Windows / Linux | 实验性，需按目标机器逐平台验证插件行为 |
+| Web | 暂不建议发布，当前数据层和文件导入仍依赖 `dart:io` / SQLite |
+
 ### 环境要求
 
 - Flutter SDK 3.41+
@@ -77,6 +86,8 @@ flutter build apk --release
 ```
 
 APK 输出：`build/app/outputs/flutter-apk/app-release.apk`
+
+> 正式发布构建必须使用与 `release.keystore` 匹配的本地签名配置。仅做本地 Release 模式冒烟验证时，可在 `android/` 目录执行 `gradlew assembleRelease -PuseDebugSigning=true`；该产物不可用于发布。
 
 ### 安装到手机
 

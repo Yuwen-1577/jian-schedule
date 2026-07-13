@@ -1,3 +1,5 @@
+import 'constants.dart';
+
 class CourseParserUtils {
   /// 将形如 "1-8周", "1,3,5-10周单周", "1,2,4周" 的字符串解析为 `List<int>`
   static List<int> parseWeeks(String weeksStr) {
@@ -37,7 +39,9 @@ class CourseParserUtils {
           final start = int.tryParse(range[0]);
           final end = int.tryParse(range[1]);
           if (start == null || end == null) continue;
-          for (int i = start; i <= end; i++) {
+          final firstWeek = start < 1 ? 1 : start;
+          final lastWeek = end > maxWeekCount ? maxWeekCount : end;
+          for (int i = firstWeek; i <= lastWeek; i++) {
             if (isOdd && i % 2 == 0) continue;
             if (isEven && i % 2 == 1) continue;
             weeks.add(i);
@@ -45,7 +49,7 @@ class CourseParserUtils {
         }
       } else {
         final w = int.tryParse(part);
-        if (w != null) {
+        if (w != null && w >= 1 && w <= maxWeekCount) {
           if (isOdd && w % 2 == 0) continue;
           if (isEven && w % 2 == 1) continue;
           weeks.add(w);

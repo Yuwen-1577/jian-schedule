@@ -96,6 +96,18 @@ void main() {
       expect(copied.reminderMinutesBefore, 20);
     });
 
+    test('fromMap accepts activeWeeks as a JSON array', () {
+      final course = Course.fromMap({
+        'id': 'array-weeks',
+        'name': '数组周次',
+        'day': 1,
+        'startPeriod': 1,
+        'activeWeeks': [5, 1, 5, 3],
+      });
+
+      expect(course.activeWeeks, [1, 3, 5]);
+    });
+
     test('formattedWeeks formats continuous, odd/even, and discrete weeks', () {
       Course makeCourse(List<int> weeks) {
         return Course(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/time_slot.dart';
 import '../providers/schedule_provider.dart';
+import '../utils/time_utils.dart';
 
 class TimeSettingPage extends StatefulWidget {
   const TimeSettingPage({super.key});
@@ -12,12 +13,25 @@ class TimeSettingPage extends StatefulWidget {
 
 class _TimeSettingPageState extends State<TimeSettingPage> {
   late List<TimeSlot> _slots;
+  bool _saving = false;
+
+  List<TimeSlot> _copySlots(Iterable<TimeSlot> slots) {
+    return slots
+        .map(
+          (slot) => TimeSlot(
+            period: slot.period,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+          ),
+        )
+        .toList();
+  }
 
   @override
   void initState() {
     super.initState();
     final provider = context.read<ScheduleProvider>();
-    _slots = List.from(provider.timeSlots);
+    _slots = _copySlots(provider.timeSlots);
   }
 
   Future<void> _pickTime(BuildContext context, int index, bool isStart) async {
@@ -88,15 +102,50 @@ class _TimeSettingPageState extends State<TimeSettingPage> {
     });
   }
 
-  void _save() {
+  String? _validateSlots() {
+    int? previousEnd;
+    for (final slot in _slots) {
+      final start = TimeUtils.parseMinutes(slot.startTime);
+      final end = TimeUtils.parseMinutes(slot.endTime);
+      if (end <= start) {
+        return '第 ${slot.period} 节的结束时间必须晚于开始时间';
+      }
+      if (previousEnd != null && start < previousEnd) {
+        return '第 ${slot.period} 节与前一节时间重叠';
+      }
+      previousEnd = end;
+    }
+    return null;
+  }
+
+  Future<void> _save() async {
+    final validationError = _validateSlots();
+    if (validationError != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(validationError)));
+      return;
+    }
+
+    setState(() => _saving = true);
     final provider = context.read<ScheduleProvider>();
-    provider.saveTimeSlots(_slots);
-    Navigator.pop(context);
+    try {
+      await provider.saveTimeSlots(_slots);
+      if (!mounted) return;
+      setState(() => _saving = false);
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('保存失败: $e')));
+    }
   }
 
   void _resetToDefault() {
     setState(() {
-      _slots = List.from(defaultTimeSlots);
+      _slots = _copySlots(defaultTimeSlots);
     });
   }
 
@@ -111,7 +160,10 @@ class _TimeSettingPageState extends State<TimeSettingPage> {
             tooltip: '恢复默认',
             onPressed: _resetToDefault,
           ),
-          TextButton(onPressed: _save, child: const Text('保存')),
+          TextButton(
+            onPressed: _saving ? null : _save,
+            child: Text(_saving ? '保存中…' : '保存'),
+          ),
         ],
       ),
       body: Column(
