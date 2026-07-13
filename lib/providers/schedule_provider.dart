@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/course.dart';
 import '../models/schedule_set.dart';
@@ -275,6 +274,7 @@ class ScheduleProvider extends ChangeNotifier {
 
       // 获取今日课程
       final todayCourses = getTodayCourses();
+      await WidgetService.syncAllCourses(_courses, _timeSlots);
       await WidgetService.syncTodayCourses(todayCourses, _timeSlots);
 
       // 同步周课表网格
@@ -290,8 +290,9 @@ class ScheduleProvider extends ChangeNotifier {
 
   // 调度课程提醒通知
   Future<void> _scheduleNotifications() async {
-    if (kIsWeb || !(Platform.isAndroid || Platform.isIOS || Platform.isMacOS))
+    if (kIsWeb || !(Platform.isAndroid || Platform.isIOS || Platform.isMacOS)) {
       return;
+    }
     try {
       await NotificationService().scheduleWeeklyReminders(
         courses: _courses,

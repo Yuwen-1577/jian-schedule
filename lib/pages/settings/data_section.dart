@@ -7,9 +7,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import '../../providers/schedule_provider.dart';
-import '../../providers/settings_provider.dart';
+
 import '../../services/excel_import_helper.dart';
-import '../../services/ocr_import_service.dart';
+
 import 'settings_widgets.dart';
 
 class DataSection extends StatelessWidget {
@@ -32,6 +32,7 @@ class DataSection extends StatelessWidget {
         ).showSnackBar(SnackBar(content: Text('已导出到: $filePath')));
       }
     } catch (e) {
+      if (!context.mounted) return;
       _showError(context, '导出失败: $e');
     }
   }
@@ -51,11 +52,13 @@ class DataSection extends StatelessWidget {
 
       final file = File(filePath);
       if (!await file.exists()) {
+        if (!context.mounted) return;
         _showError(context, '文件不存在');
         return;
       }
       final jsonStr = await file.readAsString();
 
+      if (!context.mounted) return;
       final confirmed = await _showImportPreview(context, jsonStr);
       if (confirmed != true) return;
 
@@ -73,6 +76,7 @@ class DataSection extends StatelessWidget {
         );
       }
     } catch (e) {
+      if (!context.mounted) return;
       _showError(context, '导入失败: $e');
     }
   }
@@ -204,87 +208,6 @@ class DataSection extends StatelessWidget {
     }
   }
 
-  void _importFromOcr(
-    BuildContext context,
-    ScheduleProvider provider,
-    SettingsProvider settings,
-  ) async {
-    try {
-      if (settings.ocrApiKey.isEmpty) {
-        _showError(context, '请先配置 OCR 大模型 API Key');
-        return;
-      }
-
-      final result = await FilePicker.platform.pickFiles(type: FileType.image);
-      if (result == null || result.files.isEmpty) return;
-
-      final filePath = result.files.first.path;
-      if (filePath == null) return;
-
-      if (!context.mounted) return;
-
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 16),
-              Expanded(child: Text("正在调用视觉大模型分析课表结构...")),
-            ],
-          ),
-        ),
-      );
-
-      final courses = await OcrImportService.parseImage(
-        filePath,
-        settings.ocrApiUrl,
-        settings.ocrApiKey,
-        settings.ocrModelName,
-      );
-
-      if (!context.mounted) return;
-      Navigator.pop(context); // 关闭加载
-
-      if (courses.isEmpty) {
-        _showError(context, '未识别到任何课程');
-        return;
-      }
-
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('导入截图课表'),
-          content: Text('AI 成功识别到 ${courses.length} 门课程，是否追加到当前课表集？'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('导入'),
-            ),
-          ],
-        ),
-      );
-
-      if (confirmed == true) {
-        await provider.importCoursesToActiveSet(courses);
-        if (context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('成功导入 ${courses.length} 门课程')));
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        Navigator.pop(context); // 关闭加载（如果还在）
-        _showError(context, '识别失败: $e');
-      }
-    }
-  }
 
   void _showError(BuildContext context, String msg) {
     if (!context.mounted) return;
@@ -294,7 +217,7 @@ class DataSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.read<ScheduleProvider>();
-    final settings = context.watch<SettingsProvider>();
+
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -326,14 +249,6 @@ class DataSection extends StatelessWidget {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () =>
                     ExcelImportHelper.importFromExcel(context, provider),
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.document_scanner),
-                title: const Text('从截图导入课表 (AI)'),
-                subtitle: const Text('通过 OCR 和大模型智能解析'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _importFromOcr(context, provider, settings),
               ),
               const Divider(height: 1),
               ListTile(

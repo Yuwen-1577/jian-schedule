@@ -65,5 +65,61 @@ void main() {
         expect(courseEven.activeWeeks, [2, 4]);
       },
     );
+
+    test('copyWith keeps provided id and does not reuse original id', () {
+      final course = Course(
+        id: 'original-id',
+        name: '测试课程',
+        day: 1,
+        startPeriod: 1,
+        reminderMinutesBefore: 20,
+      );
+
+      final copied = course.copyWith(id: 'new-id', name: '测试课程 (副本)');
+
+      expect(copied.id, 'new-id');
+      expect(copied.id, isNot(equals(course.id)));
+      expect(copied.reminderMinutesBefore, 20);
+    });
+
+    test('copyWith preserves reminderMinutesBefore when not overridden', () {
+      final course = Course(
+        id: 'c1',
+        name: '测试课程',
+        day: 1,
+        startPeriod: 1,
+        reminderMinutesBefore: 20,
+      );
+
+      final copied = course.copyWith(id: 'c2');
+
+      expect(copied.reminderMinutesBefore, 20);
+    });
+
+    test('formattedWeeks formats continuous, odd/even, and discrete weeks', () {
+      Course makeCourse(List<int> weeks) {
+        return Course(
+          id: '123',
+          name: '测试课程',
+          day: 1,
+          startPeriod: 1,
+          activeWeeks: weeks,
+        );
+      }
+
+      expect(
+        makeCourse(List.generate(16, (i) => i + 1)).formattedWeeks,
+        '第 1-16 周',
+      );
+      expect(
+        makeCourse([1, 3, 5, 7, 9, 11, 13, 15]).formattedWeeks,
+        '第 1-15 周 单周',
+      );
+      expect(
+        makeCourse([2, 4, 6, 8, 10, 12, 14, 16]).formattedWeeks,
+        '第 2-16 周 双周',
+      );
+      expect(makeCourse([1, 2, 4, 5, 8]).formattedWeeks, '1-2, 4-5, 8周');
+    });
   });
 }

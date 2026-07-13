@@ -4,9 +4,10 @@ import 'package:provider/provider.dart';
 import '../models/course.dart';
 import '../models/time_slot.dart';
 import '../providers/schedule_provider.dart';
-import '../pages/course_edit_page.dart';
 import '../theme/app_theme.dart';
 import '../utils/constants.dart';
+
+import '../pages/course_detail_sheet.dart';
 import '../utils/time_utils.dart';
 
 class TodayCourses extends StatelessWidget {
@@ -63,7 +64,7 @@ class TodayCourses extends StatelessWidget {
             (course) => _TodayCourseItem(
               course: course,
               timeSlots: timeSlots,
-              onTap: () => CourseEditBottomSheet.show(context, course: course),
+              onTap: () => CourseDetailBottomSheet.show(context, course: course),
             ),
           ),
         if (timeSlots.isNotEmpty) const _CurrentTimeIndicator(),

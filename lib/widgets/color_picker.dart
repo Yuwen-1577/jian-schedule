@@ -44,7 +44,7 @@ class CourseColorPicker extends StatelessWidget {
                     : null,
               ),
               child: isSelected
-                  ? Icon(Icons.check, color: Colors.white, size: 18)
+                  ? const Icon(Icons.check, color: Colors.white, size: 18)
                   : null,
             ),
           );

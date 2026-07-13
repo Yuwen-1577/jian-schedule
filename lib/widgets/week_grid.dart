@@ -7,6 +7,7 @@ import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/constants.dart';
 import '../pages/course_edit_page.dart'; // Contains CourseEditBottomSheet
+import '../pages/course_detail_sheet.dart';
 import 'course_card.dart';
 import 'time_column.dart';
 
@@ -26,7 +27,7 @@ class WeekGrid extends StatelessWidget {
       return const Center(child: Text('请先设置上课时间'));
     }
 
-    final periodHeight = ScheduleDim.periodHeight;
+    const periodHeight = ScheduleDim.periodHeight;
     final availWidth =
         MediaQuery.of(context).size.width - ScheduleDim.timeColumnWidth;
 
@@ -305,8 +306,9 @@ class _GridBodyState extends State<_GridBody> {
                         onLongPressEnd: (details) async {
                           if (_dragDay != d ||
                               _dragStartPeriod == null ||
-                              _dragEndPeriod == null)
+                              _dragEndPeriod == null) {
                             return;
+                          }
 
                           final s = _dragStartPeriod!;
                           final e = _dragEndPeriod!;
@@ -365,7 +367,7 @@ class _GridBodyState extends State<_GridBody> {
                             if (allow != true) return;
                           }
 
-                          if (mounted) {
+                          if (context.mounted) {
                             CourseEditBottomSheet.show(
                               context,
                               day: d,
@@ -564,7 +566,7 @@ class _StackedCourseGroupState extends State<_StackedCourseGroup> {
                     if (!isTop) {
                       setState(() => _topIndex = widget.group.indexOf(p));
                     } else {
-                      CourseEditBottomSheet.show(
+                      CourseDetailBottomSheet.show(
                         widget.parentContext,
                         course: p.course,
                       );

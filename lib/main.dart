@@ -78,6 +78,7 @@ Future<void> backgroundCallback(Uri? uri) async {
     }).toList()..sort((a, b) => a.startPeriod.compareTo(b.startPeriod));
 
     // 同步三种 Widget
+    await WidgetService.syncAllCourses(courses, timeSlots);
     await WidgetService.syncTodayCourses(todayCourses, timeSlots);
     await WidgetService.syncWeekGrid(courses, currentWeek);
     await WidgetService.updateAll();

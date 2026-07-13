@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:home_widget/home_widget.dart';
 import '../models/course.dart';
 import '../models/time_slot.dart';
@@ -7,22 +8,16 @@ import '../utils/constants.dart';
 /// 桌面小部件数据同步服务
 /// 通过 home_widget 包与原生 Android AppWidget 通信
 class WidgetService {
-  /// 同步学期开始日期到桌面小部件
-  /// Kotlin 端用此日期计算当前教学周
-  static Future<void> syncSemesterStart(DateTime semesterStart) async {
-    // 格式: yyyy-MM-dd，与 Kotlin SimpleDateFormat 匹配
-    final isoDate =
-        '${semesterStart.year}-${semesterStart.month.toString().padLeft(2, '0')}-${semesterStart.day.toString().padLeft(2, '0')}';
-    await HomeWidget.saveWidgetData<String>('semesterStartDate', isoDate);
-  }
+  static const String _allCoursesKey = 'allCourses';
+  static const String _todayCoursesKey = 'todayCourses';
+  static const String _timeSlotsKey = 'timeSlots';
 
-  /// 同步今日课程到桌面小部件
-  static Future<void> syncTodayCourses(
+  @visibleForTesting
+  static List<Map<String, dynamic>> serializeCoursesForWidget(
     List<Course> courses,
     List<TimeSlot> timeSlots,
-  ) async {
-    final List<Map<String, dynamic>> courseData = courses.map((course) {
-      // 从 timeSlots 获取真实上课时间
+  ) {
+    return courses.map((course) {
       String startTime = '';
       String endTime = '';
       final startIdx = course.startPeriod - 1;
@@ -48,21 +43,61 @@ class WidgetService {
         'endTime': endTime,
       };
     }).toList();
+  }
 
-    await HomeWidget.saveWidgetData<String>(
-      'todayCourses',
-      jsonEncode(courseData),
-    );
-
-    // 同步时间槽数据到小部件，用于计算进度条等
-    final List<Map<String, dynamic>> slotsData = timeSlots.map((slot) {
+  @visibleForTesting
+  static List<Map<String, dynamic>> serializeTimeSlotsForWidget(
+    List<TimeSlot> timeSlots,
+  ) {
+    return timeSlots.map((slot) {
       return {
         'period': slot.period,
         'startTime': slot.startTime,
         'endTime': slot.endTime,
       };
     }).toList();
-    await HomeWidget.saveWidgetData<String>('timeSlots', jsonEncode(slotsData));
+  }
+
+  /// 同步学期开始日期到桌面小部件
+  /// Kotlin 端用此日期计算当前教学周
+  static Future<void> syncSemesterStart(DateTime semesterStart) async {
+    // 格式: yyyy-MM-dd，与 Kotlin SimpleDateFormat 匹配
+    final isoDate =
+        '${semesterStart.year}-${semesterStart.month.toString().padLeft(2, '0')}-${semesterStart.day.toString().padLeft(2, '0')}';
+    await HomeWidget.saveWidgetData<String>('semesterStartDate', isoDate);
+  }
+
+  /// 同步当前课表集的全部课程，让原生小部件按当天/当前周自行过滤
+  static Future<void> syncAllCourses(
+    List<Course> courses,
+    List<TimeSlot> timeSlots,
+  ) async {
+    await HomeWidget.saveWidgetData<String>(
+      _allCoursesKey,
+      jsonEncode(serializeCoursesForWidget(courses, timeSlots)),
+    );
+    await HomeWidget.saveWidgetData<String>(
+      _timeSlotsKey,
+      jsonEncode(serializeTimeSlotsForWidget(timeSlots)),
+    );
+    await _updateAllProviders();
+  }
+
+  /// 同步今日课程到桌面小部件
+  static Future<void> syncTodayCourses(
+    List<Course> courses,
+    List<TimeSlot> timeSlots,
+  ) async {
+    await HomeWidget.saveWidgetData<String>(
+      _todayCoursesKey,
+      jsonEncode(serializeCoursesForWidget(courses, timeSlots)),
+    );
+
+    // 同步时间槽数据到小部件，用于计算进度条等
+    await HomeWidget.saveWidgetData<String>(
+      _timeSlotsKey,
+      jsonEncode(serializeTimeSlotsForWidget(timeSlots)),
+    );
 
     // 更新所有相关的小部件 provider
     await _updateAllProviders();

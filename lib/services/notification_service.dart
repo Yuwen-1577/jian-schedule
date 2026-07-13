@@ -36,7 +36,7 @@ class NotificationService {
       requestSoundPermission: true,
     );
 
-    final settings = InitializationSettings(
+    const settings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
       macOS: iosSettings,
@@ -141,7 +141,7 @@ class NotificationService {
         '${course.name} - ${course.reminderMinutesBefore}分钟后上课',
         body,
         tz.TZDateTime.from(reminderTime, tz.local),
-        NotificationDetails(
+        const NotificationDetails(
           android: AndroidNotificationDetails(
             'course_reminder',
             '课程提醒',
@@ -150,7 +150,7 @@ class NotificationService {
             priority: Priority.high,
             icon: '@mipmap/ic_launcher',
           ),
-          iOS: const DarwinNotificationDetails(
+          iOS: DarwinNotificationDetails(
             presentAlert: true,
             presentBadge: true,
             presentSound: true,

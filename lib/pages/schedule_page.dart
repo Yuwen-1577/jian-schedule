@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:file_picker/file_picker.dart';
 import '../providers/schedule_provider.dart';
 import '../services/excel_import_helper.dart';
-import '../theme/app_theme.dart';
 import '../utils/constants.dart';
 import '../widgets/week_grid.dart';
 import '../widgets/today_courses.dart';
@@ -11,6 +9,9 @@ import 'course_edit_page.dart';
 import 'time_setting_page.dart';
 import 'settings_page.dart';
 import 'schedule_set_manage_page.dart';
+import 'edu_import/webview_import_page.dart';
+import '../providers/settings_provider.dart';
+import '../services/ocr_import_helper.dart';
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({super.key});
@@ -45,12 +46,7 @@ class _SchedulePageState extends State<SchedulePage> {
   Widget build(BuildContext context) {
     final provider = context.watch<ScheduleProvider>();
     final currentWeek = provider.currentWeek;
-
-    // 使用今天的真实日期和星期
     final now = DateTime.now();
-    String dateStr = '${now.year}.${now.month}.${now.day}';
-    String weekDayStr = '周${weekdayShortNames[now.weekday - 1]}';
-    String titleStr = '$dateStr 第$currentWeek周 $weekDayStr';
 
     if (!provider.initialized) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -135,11 +131,36 @@ class _SchedulePageState extends State<SchedulePage> {
               await CourseEditBottomSheet.show(context);
             },
           ),
-          IconButton(
+          PopupMenuButton<String>(
             icon: const Icon(Icons.file_download_outlined),
-            tooltip: '从 Excel 导入',
-            onPressed: () =>
-                ExcelImportHelper.importFromExcel(context, provider),
+            tooltip: '导入课表',
+            onSelected: (value) {
+              if (value == 'excel') {
+                ExcelImportHelper.importFromExcel(context, provider);
+              } else if (value == 'webview') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const WebviewImportPage()),
+                );
+              } else if (value == 'ocr') {
+                final settings = context.read<SettingsProvider>();
+                OcrImportHelper.importFromOcr(context, provider, settings);
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'webview',
+                child: Text('从教务系统导入 (网页抓取)'),
+              ),
+              const PopupMenuItem(
+                value: 'ocr',
+                child: Text('从课表截图导入 (智能识别)'),
+              ),
+              const PopupMenuItem(
+                value: 'excel',
+                child: Text('从 Excel 导入 (.xlsx)'),
+              ),
+            ],
           ),
           IconButton(
             icon: const Icon(Icons.redo),

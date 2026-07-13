@@ -7,7 +7,8 @@ import '../providers/schedule_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/constants.dart';
 import '../utils/time_utils.dart';
-import 'course_edit_page.dart';
+
+import 'course_detail_sheet.dart';
 import 'settings_page.dart';
 
 enum CourseStatus { normal, ongoing, upcoming }
@@ -681,7 +682,7 @@ class _DayCourseCardState extends State<_DayCourseCard>
     // 正在进行：发光边框
     if (widget.status == CourseStatus.ongoing) {
       return GestureDetector(
-        onTap: () => CourseEditBottomSheet.show(context, course: widget.course),
+        onTap: () => CourseDetailBottomSheet.show(context, course: widget.course),
         child: AnimatedBuilder(
           animation: _glowAnimation,
           builder: (context, child) {
@@ -708,7 +709,7 @@ class _DayCourseCardState extends State<_DayCourseCard>
     // 即将开始：虚线边框
     if (widget.status == CourseStatus.upcoming) {
       return GestureDetector(
-        onTap: () => CourseEditBottomSheet.show(context, course: widget.course),
+        onTap: () => CourseDetailBottomSheet.show(context, course: widget.course),
         child: CustomPaint(
           painter: _DashedBorderPainter(color: baseColor),
           child: cardContent,
@@ -718,7 +719,7 @@ class _DayCourseCardState extends State<_DayCourseCard>
 
     // 正常状态
     return GestureDetector(
-      onTap: () => CourseEditBottomSheet.show(context, course: widget.course),
+      onTap: () => CourseDetailBottomSheet.show(context, course: widget.course),
       child: cardContent,
     );
   }
@@ -742,8 +743,8 @@ class _DashedBorderPainter extends CustomPainter {
     );
     path.addRRect(rrect);
 
-    final dashWidth = 5.0;
-    final dashSpace = 5.0;
+    const dashWidth = 5.0;
+    const dashSpace = 5.0;
     var distance = 0.0;
 
     for (PathMetric measurePath in path.computeMetrics()) {

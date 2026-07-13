@@ -79,7 +79,7 @@ class _AnimatedFloatingToggleState extends State<_AnimatedFloatingToggle> {
     final isDark = cs.brightness == Brightness.dark;
 
     final width = _isExpanded ? 240.0 : 56.0;
-    final height = 56.0;
+    const height = 56.0;
 
     return GestureDetector(
       // 点击外部区域不会收起，因为它是局部的 Widget。

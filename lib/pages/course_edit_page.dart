@@ -51,6 +51,8 @@ class CourseEditBottomSheet extends StatefulWidget {
 }
 
 class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
+  static const List<int> _reminderOptions = [0, 5, 10, 15, 30, 60];
+
   final _formKey = GlobalKey<FormState>();
   bool _showAdvanced = false;
 
@@ -62,6 +64,8 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
   late int _duration;
   late List<int> _activeWeeks;
   late int _colorValue;
+  late int _reminderMinutesBefore;
+  int? _reminderDropdownValue;
 
   @override
   void initState() {
@@ -79,6 +83,11 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
       _activeWeeks = List.generate(20, (i) => i + 1);
     }
     _colorValue = course?.colorValue ?? presetColors[0];
+    final reminder = course?.reminderMinutesBefore ?? 15;
+    _reminderMinutesBefore = reminder;
+    _reminderDropdownValue = _reminderOptions.contains(reminder)
+        ? reminder
+        : null;
   }
 
   @override
@@ -206,21 +215,20 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
 
   String _formatActiveWeeks() {
     if (_activeWeeks.isEmpty) return '未设置';
-    final sorted = List<int>.from(_activeWeeks)..sort();
-    List<String> parts = [];
-    int start = sorted.first;
-    int prev = start;
-    for (int i = 1; i < sorted.length; i++) {
-      if (sorted[i] == prev + 1) {
-        prev = sorted[i];
-      } else {
-        parts.add(start == prev ? '$start' : '$start-$prev');
-        start = sorted[i];
-        prev = start;
-      }
-    }
-    parts.add(start == prev ? '$start' : '$start-$prev');
-    return '${parts.join(', ')}周';
+    final tempCourse = Course(
+      id: '',
+      name: '',
+      day: 1,
+      startPeriod: 1,
+      activeWeeks: _activeWeeks,
+    );
+    return tempCourse.formattedWeeks;
+  }
+
+  String _formatReminder(int minutes) {
+    if (minutes <= 0) return '不提醒';
+    if (minutes >= 60) return '1小时前';
+    return '$minutes分钟前';
   }
 
   Future<void> _editWeeks() async {
@@ -379,6 +387,7 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
       note: widget.initialCourse?.note ?? '',
       scheduleSetId:
           widget.initialCourse?.scheduleSetId ?? provider.activeSetId,
+      reminderMinutesBefore: _reminderMinutesBefore,
     );
 
     if (widget.initialCourse != null) {
@@ -566,6 +575,49 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
                         ),
                       ],
                     ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: Gap.md),
+              Material(
+                color: cs.surfaceContainer,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: Gap.md,
+                    vertical: Gap.sm,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '上课提醒',
+                        style: TextStyle(color: cs.onSurfaceVariant),
+                      ),
+                      DropdownButton<int>(
+                        value: _reminderDropdownValue,
+                        hint: Text(
+                          '保留 ${_formatReminder(_reminderMinutesBefore)}',
+                        ),
+                        underline: const SizedBox(),
+                        items: _reminderOptions
+                            .map(
+                              (minutes) => DropdownMenuItem<int>(
+                                value: minutes,
+                                child: Text(_formatReminder(minutes)),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() {
+                            _reminderDropdownValue = value;
+                            _reminderMinutesBefore = value;
+                          });
+                        },
+                      ),
+                    ],
                   ),
                 ),
               ),

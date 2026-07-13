@@ -37,6 +37,57 @@ class Course {
   // 结束节次
   int get endPeriod => startPeriod + duration - 1;
 
+  // 格式化展示活跃周次 (例如: "第 1-16 周 双周")
+  String get formattedWeeks {
+    if (activeWeeks.isEmpty) return '未设置';
+    final sorted = List<int>.from(activeWeeks)..sort();
+    
+    // 判断是否为纯单周或纯双周且连续
+    bool isOddEvenSequence = sorted.length > 1;
+    for (int i = 0; i < sorted.length - 1; i++) {
+      if (sorted[i + 1] - sorted[i] != 2) {
+        isOddEvenSequence = false;
+        break;
+      }
+    }
+    
+    if (isOddEvenSequence) {
+      if (sorted.first % 2 != 0) {
+        return '第 ${sorted.first}-${sorted.last} 周 单周';
+      } else {
+        return '第 ${sorted.first}-${sorted.last} 周 双周';
+      }
+    }
+
+    // 判断是否为完全连续的周次
+    bool isContinuous = sorted.length > 1;
+    for (int i = 0; i < sorted.length - 1; i++) {
+      if (sorted[i + 1] - sorted[i] != 1) {
+        isContinuous = false;
+        break;
+      }
+    }
+    
+    if (isContinuous) {
+      return '第 ${sorted.first}-${sorted.last} 周';
+    }
+
+    List<String> parts = [];
+    int start = sorted.first;
+    int prev = start;
+    for (int i = 1; i < sorted.length; i++) {
+      if (sorted[i] == prev + 1) {
+        prev = sorted[i];
+      } else {
+        parts.add(start == prev ? '$start' : '$start-$prev');
+        start = sorted[i];
+        prev = start;
+      }
+    }
+    parts.add(start == prev ? '$start' : '$start-$prev');
+    return '${parts.join(', ')}周';
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,

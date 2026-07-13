@@ -23,7 +23,7 @@ abstract class AppRadius {
 
 // ── 课程表专用尺寸 ──────────────────────────────────
 abstract class ScheduleDim {
-  static const double periodHeight = 58;
+  static const double periodHeight = 72; // 增加卡片高度，避免内容挤在一起
   static const double timeColumnWidth = 48;
   static const double dayHeaderHeight = 30;
   static const double weekChipWidth = 42;
@@ -188,7 +188,7 @@ ThemeData _buildTheme(ColorScheme cs, bool useSystemFont) {
             borderRadius: BorderRadius.circular(AppRadius.sm),
           ),
         ),
-        textStyle: WidgetStatePropertyAll(
+        textStyle: const WidgetStatePropertyAll(
           TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
         ),
       ),
