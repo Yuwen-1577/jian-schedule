@@ -67,7 +67,7 @@ lib/
 
 | 平台 | 状态 |
 |------|------|
-| Android | 主要发布平台，已验证 Release 编译和 APK 打包 |
+| Android | 主要开发平台，已验证 Debug 编译、安装与真机运行 |
 | iOS / macOS | 实验性，原生依赖与网络权限仍需完整验证 |
 | Windows / Linux | 实验性，需按目标机器逐平台验证插件行为 |
 | Web | 暂不建议发布，当前数据层和文件导入仍依赖 `dart:io` / SQLite |
@@ -82,24 +82,24 @@ lib/
 
 ```bash
 flutter pub get
-flutter build apk --release
+flutter build apk --debug
 ```
 
-APK 输出：`build/app/outputs/flutter-apk/app-release.apk`
+APK 输出：`build/app/outputs/flutter-apk/app-debug.apk`
 
-> 正式发布构建必须使用与 `release.keystore` 匹配的本地签名配置。仅做本地 Release 模式冒烟验证时，可在 `android/` 目录执行 `gradlew assembleRelease -PuseDebugSigning=true`；该产物不可用于发布。
+Debug 版使用独立包名 `com.suda.yzune.class_schedule.debug` 和应用名“简课表 Debug”，可以与历史正式版共存，不会覆盖其数据。
 
 ### 安装到手机
 
 ```bash
-adb install build/app/outputs/flutter-apk/app-release.apk
+adb install -r build/app/outputs/flutter-apk/app-debug.apk
 ```
 
 或直接将 APK 传输到手机安装。
 
 ## 下载
 
-从 [Releases](../../releases) 页面下载最新 APK。
+项目当前仅维护 Debug 测试版本，不再发布新的正式签名 APK。历史版本仍可在 [Releases](../../releases) 页面查看。
 
 ## 更新日志
 
@@ -111,6 +111,7 @@ adb install build/app/outputs/flutter-apk/app-release.apk
 - **时间与提醒**：增加时间段合法性和重叠校验，修复后台同步竞态、通知时区和节次匹配问题。
 - **Android 优化**：修复桌面小部件周次边界、课程结束状态与周视图色块重叠，并补齐联网权限。
 - **质量保障**：补充核心逻辑测试；Android 已完成 release 模式构建验证，其他平台标记为实验性支持。
+- **Debug 工作流**：Debug 版采用独立包名和应用名称，可与历史正式版并存并保留各自数据。
 
 ### v2.5.0 (2026-06-14)
 

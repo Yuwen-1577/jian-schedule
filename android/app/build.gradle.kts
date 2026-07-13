@@ -35,6 +35,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["appLabel"] = "简课表"
     }
 
     signingConfigs {
@@ -51,6 +52,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+            manifestPlaceholders["appLabel"] = "简课表 Debug"
+        }
         release {
             signingConfig = if (useDebugSigning) {
                 signingConfigs.getByName("debug")
