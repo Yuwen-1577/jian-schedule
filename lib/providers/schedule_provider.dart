@@ -15,7 +15,8 @@ class ScheduleProvider extends ChangeNotifier {
 
   List<Course> _courses = [];
   List<TimeSlot> _timeSlots = List.from(defaultTimeSlots);
-  int _currentWeek = 1;
+  int _viewedWeek = 1;
+  DateTime _selectedDate = _dateOnly(DateTime.now());
   int _maxPeriod = 12;
   DateTime _semesterStart = defaultSemesterStart;
 
@@ -28,7 +29,9 @@ class ScheduleProvider extends ChangeNotifier {
   // Getters
   List<Course> get courses => List.unmodifiable(_courses);
   List<TimeSlot> get timeSlots => List.unmodifiable(_timeSlots);
-  int get currentWeek => _currentWeek;
+  int get viewedWeek => _viewedWeek;
+  int? get actualTeachingWeek => calculateCurrentTeachingWeek(_semesterStart);
+  DateTime get selectedDate => _selectedDate;
   int get maxPeriod => _maxPeriod;
   DateTime get semesterStart => _semesterStart;
   List<ScheduleSet> get scheduleSets => List.unmodifiable(_scheduleSets);
@@ -53,32 +56,48 @@ class ScheduleProvider extends ChangeNotifier {
 
   // 获取今日课程
   List<Course> getTodayCourses() {
+    final teachingWeek = actualTeachingWeek;
+    if (teachingWeek == null) return const [];
     final today = DateTime.now().weekday; // 1=Mon
-    return getCoursesForDay(calculateCurrentWeek(_semesterStart), today);
+    return getCoursesForDay(teachingWeek, today);
   }
 
-  // 计算当前周(基于学期开始日期)
+  // 根据真实日期重置浏览周；假期时仍停留在最近的可浏览边界周。
   void recalculateWeek() {
-    _currentWeek = calculateCurrentWeek(_semesterStart);
+    _viewedWeek = calculateCurrentWeek(_semesterStart);
+    _selectedDate = _dateOnly(DateTime.now());
     notifyListeners();
   }
 
   /// 获取指定 DateTime 对应的课程列表
   /// 自动计算该日期对应的教学周和星期几
   List<Course> getCoursesForDate(DateTime date) {
-    final week = calculateWeekForDate(date);
+    final week = calculateTeachingWeekForDate(date);
+    if (week == null) return const [];
     final day = date.weekday; // 1=Mon
     return getCoursesForDay(week, day);
   }
 
-  /// 计算指定日期对应的教学周
+  /// 计算指定日期对应的可浏览周，结果始终限制在 1..25。
   int calculateWeekForDate(DateTime date) {
     return calculateTeachingWeek(_semesterStart, date);
   }
 
+  /// 计算指定日期对应的真实教学周，日期在学期外时返回 null。
+  int? calculateTeachingWeekForDate(DateTime date) {
+    return calculateTeachingWeekOrNull(_semesterStart, date);
+  }
+
   // 切换周次
   void setWeek(int week) {
-    _currentWeek = week.clamp(1, maxWeekCount);
+    _viewedWeek = week.clamp(1, maxWeekCount);
+    notifyListeners();
+  }
+
+  void setSelectedDate(DateTime date) {
+    final normalized = _dateOnly(date);
+    if (normalized == _selectedDate) return;
+    _selectedDate = normalized;
     notifyListeners();
   }
 
@@ -317,11 +336,10 @@ class ScheduleProvider extends ChangeNotifier {
       await WidgetService.syncSemesterStart(_semesterStart);
 
       // 获取今日课程
-      final teachingWeek = calculateCurrentWeek(_semesterStart);
-      final todayCourses = getCoursesForDay(
-        teachingWeek,
-        DateTime.now().weekday,
-      );
+      final teachingWeek = calculateCurrentTeachingWeek(_semesterStart);
+      final todayCourses = teachingWeek == null
+          ? const <Course>[]
+          : getCoursesForDay(teachingWeek, DateTime.now().weekday);
       await WidgetService.syncAllCourses(_courses, _timeSlots);
       await WidgetService.syncTodayCourses(todayCourses, _timeSlots);
 
@@ -342,10 +360,15 @@ class ScheduleProvider extends ChangeNotifier {
       return;
     }
     try {
+      final teachingWeek = calculateCurrentTeachingWeek(_semesterStart);
+      if (teachingWeek == null) {
+        await NotificationService().cancelAll();
+        return;
+      }
       await NotificationService().scheduleWeeklyReminders(
         courses: _courses,
         timeSlots: _timeSlots,
-        currentWeek: calculateCurrentWeek(_semesterStart),
+        currentWeek: teachingWeek,
         semesterStart: _semesterStart,
       );
     } catch (e) {
@@ -366,3 +389,5 @@ class ScheduleProvider extends ChangeNotifier {
         });
   }
 }
+
+DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);

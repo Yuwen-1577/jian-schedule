@@ -54,7 +54,7 @@ DateTime get defaultSemesterStart {
 
 // 计算指定日期对应的教学周。
 // 统一截断为日期，避免学期起始时间的时分秒导致边界偏差。
-int calculateTeachingWeek(DateTime semesterStart, DateTime date) {
+int? calculateTeachingWeekOrNull(DateTime semesterStart, DateTime date) {
   final startDate = DateTime(
     semesterStart.year,
     semesterStart.month,
@@ -62,13 +62,34 @@ int calculateTeachingWeek(DateTime semesterStart, DateTime date) {
   );
   final targetDate = DateTime(date.year, date.month, date.day);
   final diffDays = targetDate.difference(startDate).inDays;
-  final week = diffDays < 0 ? 1 : diffDays ~/ 7 + 1;
-  return week.clamp(1, maxWeekCount);
+  if (diffDays < 0) return null;
+
+  final week = diffDays ~/ 7 + 1;
+  return week <= maxWeekCount ? week : null;
+}
+
+// 兼容需要始终落在可浏览范围内的场景。
+int calculateTeachingWeek(DateTime semesterStart, DateTime date) {
+  final teachingWeek = calculateTeachingWeekOrNull(semesterStart, date);
+  if (teachingWeek != null) return teachingWeek;
+
+  final startDate = DateTime(
+    semesterStart.year,
+    semesterStart.month,
+    semesterStart.day,
+  );
+  final targetDate = DateTime(date.year, date.month, date.day);
+  return targetDate.isBefore(startDate) ? 1 : maxWeekCount;
 }
 
 // 计算当前教学周
 int calculateCurrentWeek(DateTime semesterStart) {
   return calculateTeachingWeek(semesterStart, DateTime.now());
+}
+
+// 当前日期不在学期范围内时返回 null，避免把假期误报为第 1/25 周。
+int? calculateCurrentTeachingWeek(DateTime semesterStart) {
+  return calculateTeachingWeekOrNull(semesterStart, DateTime.now());
 }
 
 // 默认课表集 ID

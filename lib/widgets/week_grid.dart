@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../utils/constants.dart';
 import '../pages/course_edit_page.dart'; // Contains CourseEditBottomSheet
 import '../pages/course_detail_sheet.dart';
+import '../pages/time_setting_page.dart';
 import 'course_card.dart';
 import 'time_column.dart';
 
@@ -24,7 +25,16 @@ class WeekGrid extends StatelessWidget {
     final days = showWeekends ? 7 : 5;
 
     if (timeSlots.isEmpty) {
-      return const Center(child: Text('请先设置上课时间'));
+      return _EmptyGridState(
+        icon: Icons.schedule_outlined,
+        title: '还没有上课时间',
+        message: '先设置每节课的起止时间，课表才能正确排列。',
+        actionLabel: '设置上课时间',
+        onAction: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const TimeSettingPage()),
+        ),
+      );
     }
 
     const periodHeight = ScheduleDim.periodHeight;
@@ -34,6 +44,10 @@ class WeekGrid extends StatelessWidget {
     final semesterStart = provider.semesterStart;
     final monday = semesterStart.add(Duration(days: (week - 1) * 7));
     final month = monday.month;
+    final hasVisibleCourses = List.generate(
+      days,
+      (index) => provider.getCoursesForDay(week, index + 1),
+    ).any((courses) => courses.isNotEmpty);
 
     return Column(
       children: [
@@ -41,32 +55,47 @@ class WeekGrid extends StatelessWidget {
         Row(
           children: [
             _CornerHeader(month: month),
-            Expanded(child: _DayHeader(days: days)),
+            Expanded(
+              child: _DayHeader(days: days, monday: monday),
+            ),
           ],
         ),
         // 可随主体滚动的课表与时间轴
         Expanded(
-          child: SingleChildScrollView(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TimeColumn(timeSlots: timeSlots, periodHeight: periodHeight),
-                Expanded(
-                  child: SizedBox(
-                    height: periodHeight * timeSlots.length,
-                    child: _GridBody(
-                      week: week,
-                      days: days,
-                      timeSlots: timeSlots,
-                      periodHeight: periodHeight,
-                      availWidth: availWidth,
-                      provider: provider,
-                    ),
+          child: hasVisibleCourses
+              ? SingleChildScrollView(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TimeColumn(
+                        timeSlots: timeSlots,
+                        periodHeight: periodHeight,
+                      ),
+                      Expanded(
+                        child: SizedBox(
+                          height: periodHeight * timeSlots.length,
+                          child: _GridBody(
+                            week: week,
+                            days: days,
+                            timeSlots: timeSlots,
+                            periodHeight: periodHeight,
+                            availWidth: availWidth,
+                            provider: provider,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
+                )
+              : _EmptyGridState(
+                  icon: Icons.event_available_outlined,
+                  title: '第$week周还没有课程',
+                  message: provider.courses.isEmpty
+                      ? '添加第一门课程，或从教务系统、截图、Excel 导入课表。'
+                      : '这一周暂时空闲，可以切换周次或添加临时课程。',
+                  actionLabel: '添加课程',
+                  onAction: () => CourseEditBottomSheet.show(context),
                 ),
-              ],
-            ),
-          ),
         ),
       ],
     );
@@ -104,12 +133,14 @@ class _CornerHeader extends StatelessWidget {
 
 class _DayHeader extends StatelessWidget {
   final int days;
-  const _DayHeader({required this.days});
+  final DateTime monday;
+  const _DayHeader({required this.days, required this.monday});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final today = DateTime.now().weekday;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
 
     return Container(
       height: ScheduleDim.dayHeaderHeight,
@@ -121,27 +152,102 @@ class _DayHeader extends StatelessWidget {
       ),
       child: Row(
         children: List.generate(days, (i) {
-          final isToday = today == i + 1;
+          final date = monday.add(Duration(days: i));
+          final isToday = date == today;
           return Expanded(
-            child: Container(
-              alignment: Alignment.center,
-              decoration: isToday
-                  ? BoxDecoration(
-                      color: cs.primaryContainer,
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
-                    )
-                  : null,
-              child: Text(
-                weekdayNames[i],
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: isToday ? FontWeight.w600 : FontWeight.normal,
-                  color: isToday ? cs.primary : cs.onSurfaceVariant,
+            child: Semantics(
+              header: true,
+              label:
+                  '${date.month}月${date.day}日，${weekdayNames[i]}${isToday ? '，今天' : ''}',
+              child: Container(
+                alignment: Alignment.center,
+                decoration: isToday
+                    ? BoxDecoration(
+                        color: cs.primaryContainer,
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                      )
+                    : null,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      weekdayShortNames[i],
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: isToday ? cs.primary : cs.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      '${date.day}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
+                        color: isToday ? cs.primary : cs.onSurface,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
           );
         }),
+      ),
+    );
+  }
+}
+
+class _EmptyGridState extends StatelessWidget {
+  const _EmptyGridState({
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.actionLabel,
+    required this.onAction,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final String actionLabel;
+  final VoidCallback onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 320),
+        child: Padding(
+          padding: const EdgeInsets.all(Gap.xl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 48, color: cs.primary),
+              const SizedBox(height: Gap.md),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: Gap.sm),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: cs.onSurfaceVariant, height: 1.5),
+              ),
+              const SizedBox(height: Gap.lg),
+              FilledButton.icon(
+                onPressed: onAction,
+                icon: const Icon(Icons.add),
+                label: Text(actionLabel),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -509,6 +615,9 @@ class _StackedCourseGroupState extends State<_StackedCourseGroup> {
     ); // Put top element at the end of the list so it renders last (on top)
 
     final width = widget.colWidth - 4.0;
+    final animationDuration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 220);
 
     return GestureDetector(
       behavior: HitTestBehavior.deferToChild,
@@ -538,16 +647,16 @@ class _StackedCourseGroupState extends State<_StackedCourseGroup> {
 
           return AnimatedPositioned(
             key: ValueKey(p.course.id),
-            duration: const Duration(milliseconds: 300),
+            duration: animationDuration,
             curve: Curves.easeOutCubic,
             left: leftOffset,
             top: top,
             child: AnimatedScale(
-              duration: const Duration(milliseconds: 300),
+              duration: animationDuration,
               curve: Curves.easeOutCubic,
               scale: scale,
               child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 300),
+                duration: animationDuration,
                 opacity: opacity,
                 child: CourseCard(
                   course: p.course,

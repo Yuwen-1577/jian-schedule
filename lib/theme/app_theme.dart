@@ -25,7 +25,7 @@ abstract class AppRadius {
 abstract class ScheduleDim {
   static const double periodHeight = 72; // 增加卡片高度，避免内容挤在一起
   static const double timeColumnWidth = 48;
-  static const double dayHeaderHeight = 30;
+  static const double dayHeaderHeight = 48;
   static const double weekChipWidth = 42;
   static const double courseCardRadius = 8;
 }

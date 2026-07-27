@@ -24,6 +24,7 @@ class SemesterSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ScheduleProvider>();
+    final actualTeachingWeek = provider.actualTeachingWeek;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -45,7 +46,11 @@ class SemesterSection extends StatelessWidget {
           child: ListTile(
             leading: const Icon(Icons.today),
             title: const Text('当前教学周'),
-            subtitle: Text('第 ${provider.currentWeek} 周'),
+            subtitle: Text(
+              actualTeachingWeek == null
+                  ? '当前日期不在本学期内'
+                  : '第 $actualTeachingWeek 周',
+            ),
             trailing: const Text('自动计算'),
           ),
         ),

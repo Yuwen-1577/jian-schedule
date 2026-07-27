@@ -134,7 +134,7 @@ class WidgetService {
   /// 格式化本周7天的课程，按星期分组
   static Future<void> syncWeekGrid(
     List<Course> courses,
-    int currentWeek,
+    int? currentWeek,
   ) async {
     // 星期映射: 1=周一 ... 7=周日
     final Map<String, List<Map<String, dynamic>>> weekGrid = {
@@ -159,7 +159,7 @@ class WidgetService {
 
     // 按星期分组课程
     for (final course in courses) {
-      if (course.isActiveInWeek(currentWeek)) {
+      if (currentWeek != null && course.isActiveInWeek(currentWeek)) {
         final dayIndex = course.day - 1; // day 从1开始
         if (dayIndex >= 0 && dayIndex < 7) {
           weekGrid[dayNames[dayIndex]]!.add({

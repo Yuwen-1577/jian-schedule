@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'schedule_page.dart';
-import 'day_view_page.dart';
+
 import '../theme/app_theme.dart';
+import 'day_view_page.dart';
+import 'schedule_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -11,7 +12,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _currentIndex = 1;
+  int _currentIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -23,16 +24,15 @@ class _HomePageState extends State<HomePage> {
             children: const [SchedulePage(), DayViewPage()],
           ),
           Positioned(
-            bottom: Gap.xl,
             left: 0,
             right: 0,
+            bottom: Gap.xl,
             child: Center(
-              child: _AnimatedFloatingToggle(
+              child: _ExpandablePillNavigation(
                 currentIndex: _currentIndex,
                 onChanged: (index) {
-                  setState(() {
-                    _currentIndex = index;
-                  });
+                  if (index == _currentIndex) return;
+                  setState(() => _currentIndex = index);
                 },
               ),
             ),
@@ -43,156 +43,74 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class _AnimatedFloatingToggle extends StatefulWidget {
-  final int currentIndex;
-  final ValueChanged<int> onChanged;
-
-  const _AnimatedFloatingToggle({
+class _ExpandablePillNavigation extends StatefulWidget {
+  const _ExpandablePillNavigation({
     required this.currentIndex,
     required this.onChanged,
   });
 
+  final int currentIndex;
+  final ValueChanged<int> onChanged;
+
   @override
-  State<_AnimatedFloatingToggle> createState() =>
-      _AnimatedFloatingToggleState();
+  State<_ExpandablePillNavigation> createState() =>
+      _ExpandablePillNavigationState();
 }
 
-class _AnimatedFloatingToggleState extends State<_AnimatedFloatingToggle> {
+class _ExpandablePillNavigationState extends State<_ExpandablePillNavigation> {
   bool _isExpanded = false;
-
-  void _toggleExpand() {
-    setState(() {
-      _isExpanded = !_isExpanded;
-    });
-  }
 
   void _select(int index) {
     widget.onChanged(index);
-    setState(() {
-      _isExpanded = false;
-    });
+    setState(() => _isExpanded = false);
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isDark = cs.brightness == Brightness.dark;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final currentLabel = widget.currentIndex == 0 ? '周课表' : '日视图';
 
-    final width = _isExpanded ? 240.0 : 56.0;
-    const height = 56.0;
-
-    return GestureDetector(
-      // 点击外部区域不会收起，因为它是局部的 Widget。
-      // 可以通过外部 Scaffold 给一个全屏 GestureDetector 来实现，但更简单的是用户点击任意选项就收起
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          color: cs.primaryContainer,
-          borderRadius: BorderRadius.circular(28.0),
-          boxShadow: [
-            BoxShadow(
-              color: isDark ? Colors.black45 : Colors.black26,
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(28.0),
-          child: Material(
-            color: Colors.transparent,
-            child: _isExpanded
-                ? Row(
-                    children: [
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => _select(0),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: widget.currentIndex == 0
-                                  ? cs.primary
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(28.0),
-                            ),
-                            alignment: Alignment.center,
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              physics: const NeverScrollableScrollPhysics(),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.calendar_view_week,
-                                    size: 20,
-                                    color: widget.currentIndex == 0
-                                        ? cs.onPrimary
-                                        : cs.onPrimaryContainer,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '周视图',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: widget.currentIndex == 0
-                                          ? cs.onPrimary
-                                          : cs.onPrimaryContainer,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => _select(1),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: widget.currentIndex == 1
-                                  ? cs.primary
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(28.0),
-                            ),
-                            alignment: Alignment.center,
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              physics: const NeverScrollableScrollPhysics(),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.view_day,
-                                    size: 20,
-                                    color: widget.currentIndex == 1
-                                        ? cs.onPrimary
-                                        : cs.onPrimaryContainer,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '日视图',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: widget.currentIndex == 1
-                                          ? cs.onPrimary
-                                          : cs.onPrimaryContainer,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                : InkWell(
-                    onTap: _toggleExpand,
+    return Semantics(
+      container: true,
+      child: Material(
+        color: cs.primaryContainer,
+        elevation: 6,
+        shadowColor: cs.shadow.withValues(alpha: 0.24),
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        clipBehavior: Clip.antiAlias,
+        child: AnimatedContainer(
+          duration: reduceMotion
+              ? Duration.zero
+              : const Duration(milliseconds: 240),
+          curve: Curves.easeInOutCubic,
+          width: _isExpanded ? 272 : 56,
+          height: 56,
+          child: _isExpanded
+              ? Row(
+                  children: [
+                    _PillDestination(
+                      selected: widget.currentIndex == 0,
+                      icon: Icons.calendar_view_week_outlined,
+                      selectedIcon: Icons.calendar_view_week,
+                      label: '周课表',
+                      onTap: () => _select(0),
+                    ),
+                    _PillDestination(
+                      selected: widget.currentIndex == 1,
+                      icon: Icons.view_day_outlined,
+                      selectedIcon: Icons.view_day,
+                      label: '日视图',
+                      onTap: () => _select(1),
+                    ),
+                  ],
+                )
+              : Semantics(
+                  button: true,
+                  label: '打开视图切换，当前$currentLabel',
+                  child: InkWell(
+                    onTap: () => setState(() => _isExpanded = true),
+                    customBorder: const CircleBorder(),
                     child: Center(
                       child: Icon(
                         widget.currentIndex == 0
@@ -202,6 +120,67 @@ class _AnimatedFloatingToggleState extends State<_AnimatedFloatingToggle> {
                       ),
                     ),
                   ),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PillDestination extends StatelessWidget {
+  const _PillDestination({
+    required this.selected,
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final bool selected;
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final foreground = selected ? cs.onPrimary : cs.onPrimaryContainer;
+
+    return Expanded(
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: label,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.full),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: selected ? cs.primary : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadius.full),
+            ),
+            child: Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    selected ? selectedIcon : icon,
+                    size: 21,
+                    color: foreground,
+                  ),
+                  const SizedBox(width: Gap.sm),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: foreground,
+                      fontSize: 14,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

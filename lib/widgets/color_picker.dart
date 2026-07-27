@@ -23,49 +23,90 @@ class CourseColorPicker extends StatelessWidget {
       children: [
         ...presetColors.map((color) {
           final isSelected = color == selectedColor;
-          return GestureDetector(
-            onTap: () => onColorSelected(color),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: intToColor(color),
-                shape: BoxShape.circle,
-                border: isSelected
-                    ? Border.all(color: cs.outline, width: 2.5)
-                    : Border.all(color: cs.outlineVariant, width: 1),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: intToColor(color).withValues(alpha: 0.3),
-                          blurRadius: 6,
-                        ),
-                      ]
-                    : null,
+          final swatchColor = intToColor(color);
+          return Semantics(
+            button: true,
+            selected: isSelected,
+            label: '课程颜色 ${presetColors.indexOf(color) + 1}',
+            child: InkResponse(
+              onTap: () => onColorSelected(color),
+              radius: 24,
+              child: SizedBox(
+                width: 48,
+                height: 48,
+                child: Center(
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: swatchColor,
+                      shape: BoxShape.circle,
+                      border: isSelected
+                          ? Border.all(color: cs.outline, width: 2.5)
+                          : Border.all(color: cs.outlineVariant, width: 1),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: swatchColor.withValues(alpha: 0.3),
+                                blurRadius: 6,
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: isSelected
+                        ? Icon(
+                            Icons.check,
+                            color: isDarkColor(color)
+                                ? Colors.white
+                                : Colors.black,
+                            size: 18,
+                          )
+                        : null,
+                  ),
+                ),
               ),
-              child: isSelected
-                  ? const Icon(Icons.check, color: Colors.white, size: 18)
-                  : null,
             ),
           );
         }),
         // 自定义颜色按钮
-        GestureDetector(
-          onTap: () => _pickCustomColor(context),
-          child: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: !isPreset ? intToColor(selectedColor) : null,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: !isPreset ? cs.outline : cs.outlineVariant,
-                width: !isPreset ? 2.5 : 1.5,
+        Semantics(
+          button: true,
+          selected: !isPreset,
+          label: '自定义课程颜色',
+          child: InkResponse(
+            onTap: () => _pickCustomColor(context),
+            radius: 24,
+            child: SizedBox(
+              width: 48,
+              height: 48,
+              child: Center(
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: !isPreset ? intToColor(selectedColor) : null,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: !isPreset ? cs.outline : cs.outlineVariant,
+                      width: !isPreset ? 2.5 : 1.5,
+                    ),
+                  ),
+                  child: !isPreset
+                      ? Icon(
+                          Icons.check,
+                          color: isDarkColor(selectedColor)
+                              ? Colors.white
+                              : Colors.black,
+                          size: 18,
+                        )
+                      : Icon(
+                          Icons.palette,
+                          size: 18,
+                          color: cs.onSurfaceVariant,
+                        ),
+                ),
               ),
             ),
-            child: !isPreset
-                ? const Icon(Icons.check, color: Colors.white, size: 18)
-                : Icon(Icons.palette, size: 18, color: cs.onSurfaceVariant),
           ),
         ),
       ],

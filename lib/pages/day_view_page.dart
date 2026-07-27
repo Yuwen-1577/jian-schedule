@@ -21,14 +21,11 @@ class DayViewPage extends StatefulWidget {
 }
 
 class _DayViewPageState extends State<DayViewPage> {
-  late DateTime _selectedDate;
   late PageController _pageController;
 
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
-    _selectedDate = DateTime(now.year, now.month, now.day);
     // Page index 1000 is current week
     _pageController = PageController(initialPage: 1000);
   }
@@ -40,9 +37,7 @@ class _DayViewPageState extends State<DayViewPage> {
   }
 
   void _onDateSelected(DateTime date) {
-    setState(() {
-      _selectedDate = date;
-    });
+    context.read<ScheduleProvider>().setSelectedDate(date);
   }
 
   DateTime _mondayForPage(int pageIndex) {
@@ -61,28 +56,47 @@ class _DayViewPageState extends State<DayViewPage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final weekDayStr = '周${weekdayShortNames[_selectedDate.weekday - 1]}';
-    final titleStr = '${_selectedDate.month}月${_selectedDate.day}日 $weekDayStr';
+    final selectedDate = provider.selectedDate;
+    final teachingWeek = provider.calculateTeachingWeekForDate(selectedDate);
+    final weekDayStr = '周${weekdayShortNames[selectedDate.weekday - 1]}';
+    final titleStr = '${selectedDate.month}月${selectedDate.day}日 $weekDayStr';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final isTodaySelected = selectedDate == today;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(titleStr, style: const TextStyle(fontSize: 16)),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              titleStr,
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+            ),
+            Text(
+              teachingWeek == null ? '不在本学期内' : '第$teachingWeek周',
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+            ),
+          ],
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.today),
-            tooltip: '回到今天',
-            onPressed: () {
-              final now = DateTime.now();
-              setState(() {
-                _selectedDate = DateTime(now.year, now.month, now.day);
-              });
-              _pageController.animateToPage(
-                1000,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-              );
-            },
-          ),
+          if (!isTodaySelected)
+            IconButton(
+              icon: const Icon(Icons.today_outlined),
+              tooltip: '回到今天',
+              onPressed: () {
+                provider.setSelectedDate(today);
+                if (MediaQuery.disableAnimationsOf(context)) {
+                  _pageController.jumpToPage(1000);
+                } else {
+                  _pageController.animateToPage(
+                    1000,
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                  );
+                }
+              },
+            ),
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'settings') {
@@ -117,9 +131,9 @@ class _DayViewPageState extends State<DayViewPage> {
               onPageChanged: (index) {
                 final nextDate = _mondayForPage(
                   index,
-                ).add(Duration(days: _selectedDate.weekday - 1));
-                if (!nextDate.isAtSameMomentAs(_selectedDate)) {
-                  setState(() => _selectedDate = nextDate);
+                ).add(Duration(days: selectedDate.weekday - 1));
+                if (!nextDate.isAtSameMomentAs(selectedDate)) {
+                  provider.setSelectedDate(nextDate);
                 }
               },
               itemBuilder: (context, index) {
@@ -131,56 +145,63 @@ class _DayViewPageState extends State<DayViewPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: List.generate(7, (i) {
                     final date = pageMonday.add(Duration(days: i));
-                    final isSelected = date.isAtSameMomentAs(_selectedDate);
+                    final isSelected = date.isAtSameMomentAs(selectedDate);
                     final isToday = date.isAtSameMomentAs(today);
 
-                    return GestureDetector(
-                      onTap: () => _onDateSelected(date),
-                      behavior: HitTestBehavior.opaque,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            weekdayShortNames[i],
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.w500,
-                              color: isSelected
-                                  ? cs.primary
-                                  : cs.onSurfaceVariant.withValues(alpha: 0.7),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: isSelected
-                                  ? cs.primary
-                                  : (isToday
-                                        ? cs.primaryContainer.withValues(
-                                            alpha: 0.6,
-                                          )
-                                        : Colors.transparent),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              '${date.day}',
+                    return Semantics(
+                      button: true,
+                      selected: isSelected,
+                      label:
+                          '${date.month}月${date.day}日，${weekdayNames[i]}${isToday ? '，今天' : ''}',
+                      child: InkWell(
+                        onTap: () => _onDateSelected(date),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              weekdayShortNames[i],
                               style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: isSelected || isToday
+                                fontSize: 11,
+                                fontWeight: isSelected
                                     ? FontWeight.bold
-                                    : FontWeight.normal,
+                                    : FontWeight.w500,
                                 color: isSelected
-                                    ? cs.onPrimary
-                                    : (isToday ? cs.primary : cs.onSurface),
+                                    ? cs.primary
+                                    : cs.onSurfaceVariant.withValues(
+                                        alpha: 0.7,
+                                      ),
                               ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 6),
+                            Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isSelected
+                                    ? cs.primary
+                                    : (isToday
+                                          ? cs.primaryContainer.withValues(
+                                              alpha: 0.6,
+                                            )
+                                          : Colors.transparent),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '${date.day}',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: isSelected || isToday
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: isSelected
+                                      ? cs.onPrimary
+                                      : (isToday ? cs.primary : cs.onSurface),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   }),
@@ -190,7 +211,7 @@ class _DayViewPageState extends State<DayViewPage> {
           ),
           // 时间轴主体
           Expanded(
-            child: _TimelineView(date: _selectedDate, provider: provider),
+            child: _TimelineView(date: selectedDate, provider: provider),
           ),
         ],
       ),
@@ -291,26 +312,35 @@ class _TimelineViewState extends State<_TimelineView> {
   Widget build(BuildContext context) {
     final courses = widget.provider.getCoursesForDate(widget.date);
     final cs = Theme.of(context).colorScheme;
+    final teachingWeek = widget.provider.calculateTeachingWeekForDate(
+      widget.date,
+    );
     final isToday = widget.date.isAtSameMomentAs(
       DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day),
     );
 
     if (courses.isEmpty) {
+      final message = teachingWeek == null
+          ? '该日期不在本学期内'
+          : (isToday ? '今天没有课程，享受休息吧！' : '这一天没有课程');
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.free_breakfast,
-              size: 64,
-              color: cs.onSurfaceVariant.withValues(alpha: 0.2),
+              teachingWeek == null
+                  ? Icons.event_busy_outlined
+                  : Icons.free_breakfast_outlined,
+              size: 52,
+              color: cs.primary,
             ),
             const SizedBox(height: Gap.md),
             Text(
-              '今天没有课程，享受休息吧！',
+              message,
               style: TextStyle(
-                fontSize: 14,
-                color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: cs.onSurfaceVariant,
               ),
             ),
           ],
@@ -323,7 +353,7 @@ class _TimelineViewState extends State<_TimelineView> {
 
     return SingleChildScrollView(
       controller: _scrollController,
-      padding: const EdgeInsets.only(bottom: 100), // 为底部悬浮按钮留出空间
+      padding: const EdgeInsets.only(bottom: 24),
       child: Stack(
         children: [
           // 时间背景线和刻度
@@ -542,6 +572,7 @@ class _DayCourseCardState extends State<_DayCourseCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _glowController;
   late Animation<double> _glowAnimation;
+  bool _reduceMotion = false;
 
   @override
   void initState() {
@@ -553,22 +584,32 @@ class _DayCourseCardState extends State<_DayCourseCard>
     _glowAnimation = Tween<double>(begin: 0.2, end: 0.8).animate(
       CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
     );
+  }
 
-    if (widget.status == CourseStatus.ongoing) {
-      _glowController.repeat(reverse: true);
-    }
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    if (_reduceMotion == reduceMotion && _glowController.isAnimating) return;
+    _reduceMotion = reduceMotion;
+    _syncGlowAnimation();
   }
 
   @override
   void didUpdateWidget(_DayCourseCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.status == CourseStatus.ongoing &&
-        oldWidget.status != CourseStatus.ongoing) {
-      _glowController.repeat(reverse: true);
-    } else if (widget.status != CourseStatus.ongoing &&
-        oldWidget.status == CourseStatus.ongoing) {
-      _glowController.stop();
+    if (widget.status != oldWidget.status) _syncGlowAnimation();
+  }
+
+  void _syncGlowAnimation() {
+    if (widget.status == CourseStatus.ongoing && !_reduceMotion) {
+      if (!_glowController.isAnimating) {
+        _glowController.repeat(reverse: true);
+      }
+      return;
     }
+    _glowController.stop();
+    _glowController.value = 0.35;
   }
 
   @override
@@ -646,7 +687,7 @@ class _DayCourseCardState extends State<_DayCourseCard>
                     const SizedBox(height: 4),
                     Text(
                       widget.course.teacher,
-                      style: TextStyle(fontSize: 11, color: subTextColor),
+                      style: TextStyle(fontSize: 12, color: subTextColor),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -655,7 +696,7 @@ class _DayCourseCardState extends State<_DayCourseCard>
                   Text(
                     '${widget.startTime} - ${widget.endTime}',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.w500,
                       color: subTextColor,
                     ),
@@ -684,7 +725,7 @@ class _DayCourseCardState extends State<_DayCourseCard>
                   child: Text(
                     widget.status == CourseStatus.ongoing ? '正在进行' : '即将开始',
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: widget.status == CourseStatus.ongoing
                           ? Colors.white
@@ -700,10 +741,8 @@ class _DayCourseCardState extends State<_DayCourseCard>
 
     // 正在进行：发光边框
     if (widget.status == CourseStatus.ongoing) {
-      return GestureDetector(
-        onTap: () =>
-            CourseDetailBottomSheet.show(context, course: widget.course),
-        child: AnimatedBuilder(
+      return _buildInteractiveCard(
+        AnimatedBuilder(
           animation: _glowAnimation,
           builder: (context, child) {
             return Container(
@@ -728,10 +767,8 @@ class _DayCourseCardState extends State<_DayCourseCard>
 
     // 即将开始：虚线边框
     if (widget.status == CourseStatus.upcoming) {
-      return GestureDetector(
-        onTap: () =>
-            CourseDetailBottomSheet.show(context, course: widget.course),
-        child: CustomPaint(
+      return _buildInteractiveCard(
+        CustomPaint(
           painter: _DashedBorderPainter(color: baseColor),
           child: cardContent,
         ),
@@ -739,9 +776,24 @@ class _DayCourseCardState extends State<_DayCourseCard>
     }
 
     // 正常状态
-    return GestureDetector(
-      onTap: () => CourseDetailBottomSheet.show(context, course: widget.course),
-      child: cardContent,
+    return _buildInteractiveCard(cardContent);
+  }
+
+  Widget _buildInteractiveCard(Widget child) {
+    final location = widget.course.room.isEmpty ? '' : '，${widget.course.room}';
+    return Semantics(
+      button: true,
+      label:
+          '${widget.course.name}$location，${widget.startTime}到${widget.endTime}',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          onTap: () =>
+              CourseDetailBottomSheet.show(context, course: widget.course),
+          child: child,
+        ),
+      ),
     );
   }
 }

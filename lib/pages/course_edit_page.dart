@@ -31,6 +31,8 @@ class CourseEditBottomSheet extends StatefulWidget {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
       backgroundColor: Colors.transparent,
       builder: (_) => Padding(
         padding: EdgeInsets.only(
@@ -66,6 +68,10 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
   late int _colorValue;
   late int _reminderMinutesBefore;
   int? _reminderDropdownValue;
+  bool _submitting = false;
+  bool _allowPop = false;
+  String? _weeksError;
+  late String _initialSnapshot;
 
   @override
   void initState() {
@@ -88,6 +94,7 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
     _reminderDropdownValue = _reminderOptions.contains(reminder)
         ? reminder
         : null;
+    _initialSnapshot = _formSnapshot();
   }
 
   @override
@@ -353,7 +360,9 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
                   child: const Text('取消'),
                 ),
                 TextButton(
-                  onPressed: () => Navigator.pop(ctx, true),
+                  onPressed: tempWeeks.isEmpty
+                      ? null
+                      : () => Navigator.pop(ctx, true),
                   style: TextButton.styleFrom(foregroundColor: cs.primary),
                   child: const Text('确定'),
                 ),
@@ -367,12 +376,18 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
     if (result == true) {
       setState(() {
         _activeWeeks = tempWeeks;
+        _weeksError = null;
       });
     }
   }
 
-  void _save() {
+  Future<void> _save() async {
+    if (_submitting) return;
     if (!_formKey.currentState!.validate()) return;
+    if (_activeWeeks.isEmpty) {
+      setState(() => _weeksError = '请至少选择一周');
+      return;
+    }
     final provider = context.read<ScheduleProvider>();
     final course = Course(
       id: widget.initialCourse?.id ?? const Uuid().v4(),
@@ -390,15 +405,26 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
       reminderMinutesBefore: _reminderMinutesBefore,
     );
 
-    if (widget.initialCourse != null) {
-      provider.updateCourse(course);
-    } else {
-      provider.addCourse(course);
+    setState(() => _submitting = true);
+    try {
+      if (widget.initialCourse != null) {
+        await provider.updateCourse(course);
+      } else {
+        await provider.addCourse(course);
+      }
+      if (!mounted) return;
+      _closeSheet();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('保存失败，请重试：$error')));
     }
-    Navigator.pop(context);
   }
 
-  void _delete() async {
+  Future<void> _delete() async {
+    if (_submitting) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -419,8 +445,74 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
     );
 
     if (confirmed == true && mounted) {
-      context.read<ScheduleProvider>().deleteCourse(widget.initialCourse!.id);
-      Navigator.pop(context);
+      setState(() => _submitting = true);
+      try {
+        await context.read<ScheduleProvider>().deleteCourse(
+          widget.initialCourse!.id,
+        );
+        if (!mounted) return;
+        _closeSheet();
+      } catch (error) {
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('删除失败，请重试：$error')));
+      }
+    }
+  }
+
+  String _formSnapshot() {
+    final weeks = List<int>.from(_activeWeeks)..sort();
+    return [
+      _nameCtrl.text,
+      _roomCtrl.text,
+      _teacherCtrl.text,
+      _day,
+      _startPeriod,
+      _duration,
+      weeks.join(','),
+      _colorValue,
+      _reminderMinutesBefore,
+    ].join('|');
+  }
+
+  bool get _isDirty => _formSnapshot() != _initialSnapshot;
+
+  void _closeSheet() {
+    if (!mounted) return;
+    setState(() => _allowPop = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.pop(context);
+    });
+  }
+
+  Future<void> _attemptClose() async {
+    if (_submitting) return;
+    if (!_isDirty) {
+      _closeSheet();
+      return;
+    }
+
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('放弃修改？'),
+        content: const Text('尚未保存的课程信息会丢失。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('继续编辑'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('放弃修改'),
+          ),
+        ],
+      ),
+    );
+    if (discard == true && mounted) {
+      _closeSheet();
     }
   }
 
@@ -429,139 +521,107 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
     final cs = Theme.of(context).colorScheme;
     final isEditing = widget.initialCourse != null;
 
-    return Container(
-      padding: const EdgeInsets.all(Gap.xl),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppRadius.lg),
+    return PopScope(
+      canPop: _allowPop,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _attemptClose();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(Gap.xl),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerLow,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppRadius.lg),
+          ),
         ),
-      ),
-      child: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const SizedBox(width: 48),
-                  Expanded(
-                    child: Text(
-                      isEditing ? '编辑课程' : '添加课程',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: cs.onSurface,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  if (isEditing)
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
                     IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red),
-                      onPressed: _delete,
-                    )
-                  else
-                    const SizedBox(width: 48),
-                ],
-              ),
-              const SizedBox(height: Gap.xl),
-              TextFormField(
-                controller: _nameCtrl,
-                decoration: const InputDecoration(labelText: '课程名称'),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? '请输入名称' : null,
-              ),
-              const SizedBox(height: Gap.md),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _roomCtrl,
-                      decoration: const InputDecoration(labelText: '教室'),
+                      icon: const Icon(Icons.close),
+                      tooltip: '关闭',
+                      onPressed: _submitting ? null : _attemptClose,
                     ),
-                  ),
-                  const SizedBox(width: Gap.md),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _teacherCtrl,
-                      decoration: const InputDecoration(labelText: '教师'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: Gap.lg),
-
-              Material(
-                color: cs.surfaceContainer,
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-                child: InkWell(
-                  onTap: _editTime,
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                  child: Padding(
-                    padding: const EdgeInsets.all(Gap.md),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '上课时间',
-                          style: TextStyle(color: cs.onSurfaceVariant),
+                    Expanded(
+                      child: Text(
+                        isEditing ? '编辑课程' : '添加课程',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: cs.onSurface,
                         ),
-                        Row(
-                          children: [
-                            Text(
-                              '${weekdayNames[_day - 1]} 第$_startPeriod-${_startPeriod + _duration - 1}节',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: cs.onSurface,
-                              ),
-                            ),
-                            const SizedBox(width: Gap.sm),
-                            Icon(
-                              Icons.edit_outlined,
-                              size: 16,
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ],
-                        ),
-                      ],
+                        textAlign: TextAlign.center,
+                      ),
                     ),
-                  ),
+                    if (isEditing)
+                      IconButton(
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
+                        ),
+                        tooltip: '删除课程',
+                        onPressed: _submitting ? null : _delete,
+                      )
+                    else
+                      const SizedBox(width: 48),
+                  ],
                 ),
-              ),
+                const SizedBox(height: Gap.xl),
+                TextFormField(
+                  controller: _nameCtrl,
+                  decoration: const InputDecoration(labelText: '课程名称'),
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? '请输入名称' : null,
+                ),
+                const SizedBox(height: Gap.md),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _roomCtrl,
+                        decoration: const InputDecoration(labelText: '教室'),
+                      ),
+                    ),
+                    const SizedBox(width: Gap.md),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _teacherCtrl,
+                        decoration: const InputDecoration(labelText: '教师'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: Gap.lg),
 
-              const SizedBox(height: Gap.md),
-              Material(
-                color: cs.surfaceContainer,
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-                child: InkWell(
-                  onTap: _editWeeks,
+                Material(
+                  color: cs.surfaceContainer,
                   borderRadius: BorderRadius.circular(AppRadius.sm),
-                  child: Padding(
-                    padding: const EdgeInsets.all(Gap.md),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '上课周数',
-                          style: TextStyle(color: cs.onSurfaceVariant),
-                        ),
-                        Expanded(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
+                  child: InkWell(
+                    onTap: _editTime,
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    child: Padding(
+                      padding: const EdgeInsets.all(Gap.md),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '上课时间',
+                            style: TextStyle(color: cs.onSurfaceVariant),
+                          ),
+                          Row(
                             children: [
-                              Flexible(
-                                child: Text(
-                                  _formatActiveWeeks(),
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: cs.onSurface,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.right,
+                              Text(
+                                '${weekdayNames[_day - 1]} 第$_startPeriod-${_startPeriod + _duration - 1}节',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: cs.onSurface,
                                 ),
                               ),
                               const SizedBox(width: Gap.sm),
@@ -572,102 +632,173 @@ class _CourseEditBottomSheetState extends State<CourseEditBottomSheet> {
                               ),
                             ],
                           ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: Gap.md),
+                Material(
+                  color: cs.surfaceContainer,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  child: InkWell(
+                    onTap: _editWeeks,
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    child: Padding(
+                      padding: const EdgeInsets.all(Gap.md),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '上课周数',
+                            style: TextStyle(color: cs.onSurfaceVariant),
+                          ),
+                          Expanded(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    _formatActiveWeeks(),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: cs.onSurface,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.right,
+                                  ),
+                                ),
+                                const SizedBox(width: Gap.sm),
+                                Icon(
+                                  Icons.edit_outlined,
+                                  size: 16,
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                if (_weeksError != null) ...[
+                  const SizedBox(height: Gap.xs),
+                  Text(
+                    _weeksError!,
+                    style: TextStyle(fontSize: 12, color: cs.error),
+                  ),
+                ],
+
+                const SizedBox(height: Gap.md),
+                Material(
+                  color: cs.surfaceContainer,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: Gap.md,
+                      vertical: Gap.sm,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '上课提醒',
+                          style: TextStyle(color: cs.onSurfaceVariant),
+                        ),
+                        DropdownButton<int>(
+                          value: _reminderDropdownValue,
+                          hint: Text(
+                            '保留 ${_formatReminder(_reminderMinutesBefore)}',
+                          ),
+                          underline: const SizedBox(),
+                          items: _reminderOptions
+                              .map(
+                                (minutes) => DropdownMenuItem<int>(
+                                  value: minutes,
+                                  child: Text(_formatReminder(minutes)),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setState(() {
+                              _reminderDropdownValue = value;
+                              _reminderMinutesBefore = value;
+                            });
+                          },
                         ),
                       ],
                     ),
                   ),
                 ),
-              ),
 
-              const SizedBox(height: Gap.md),
-              Material(
-                color: cs.surfaceContainer,
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: Gap.md,
-                    vertical: Gap.sm,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '上课提醒',
-                        style: TextStyle(color: cs.onSurfaceVariant),
-                      ),
-                      DropdownButton<int>(
-                        value: _reminderDropdownValue,
-                        hint: Text(
-                          '保留 ${_formatReminder(_reminderMinutesBefore)}',
-                        ),
-                        underline: const SizedBox(),
-                        items: _reminderOptions
-                            .map(
-                              (minutes) => DropdownMenuItem<int>(
-                                value: minutes,
-                                child: Text(_formatReminder(minutes)),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
-                          if (value == null) return;
-                          setState(() {
-                            _reminderDropdownValue = value;
-                            _reminderMinutesBefore = value;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: Gap.lg),
-              GestureDetector(
-                onTap: () => setState(() => _showAdvanced = !_showAdvanced),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '高级选项 (颜色)',
-                      style: TextStyle(color: cs.primary, fontSize: 13),
-                    ),
-                    Icon(
-                      _showAdvanced
-                          ? Icons.keyboard_arrow_up
-                          : Icons.keyboard_arrow_down,
-                      color: cs.primary,
-                      size: 16,
-                    ),
-                  ],
-                ),
-              ),
-
-              if (_showAdvanced) ...[
                 const SizedBox(height: Gap.lg),
-                CourseColorPicker(
-                  selectedColor: _colorValue,
-                  onColorSelected: (c) => setState(() => _colorValue = c),
+                Semantics(
+                  button: true,
+                  expanded: _showAdvanced,
+                  child: InkWell(
+                    onTap: _submitting
+                        ? null
+                        : () => setState(() => _showAdvanced = !_showAdvanced),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    child: SizedBox(
+                      height: 48,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '高级选项（颜色）',
+                            style: TextStyle(color: cs.primary, fontSize: 13),
+                          ),
+                          Icon(
+                            _showAdvanced
+                                ? Icons.keyboard_arrow_up
+                                : Icons.keyboard_arrow_down,
+                            color: cs.primary,
+                            size: 18,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                if (_showAdvanced) ...[
+                  const SizedBox(height: Gap.lg),
+                  CourseColorPicker(
+                    selectedColor: _colorValue,
+                    onColorSelected: (c) => setState(() => _colorValue = c),
+                  ),
+                ],
+
+                const SizedBox(height: Gap.xl),
+                ElevatedButton(
+                  onPressed: _submitting ? null : _save,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: cs.primary,
+                    foregroundColor: cs.onPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                  ),
+                  child: _submitting
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text(
+                          '保存',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ],
-
-              const SizedBox(height: Gap.xl),
-              ElevatedButton(
-                onPressed: _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: cs.primary,
-                  foregroundColor: cs.onPrimary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                ),
-                child: const Text(
-                  '保存',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

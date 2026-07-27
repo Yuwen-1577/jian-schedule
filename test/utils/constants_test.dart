@@ -16,5 +16,24 @@ void main() {
       expect(calculateTeachingWeek(semesterStart, DateTime(2026, 1, 1)), 1);
       expect(calculateTeachingWeek(semesterStart, DateTime(2027, 1, 1)), 25);
     });
+
+    test('strict calculation returns null outside the semester', () {
+      expect(
+        calculateTeachingWeekOrNull(semesterStart, DateTime(2026, 1, 1)),
+        isNull,
+      );
+      expect(
+        calculateTeachingWeekOrNull(semesterStart, DateTime(2026, 2, 23)),
+        1,
+      );
+      expect(
+        calculateTeachingWeekOrNull(semesterStart, DateTime(2026, 8, 16)),
+        25,
+      );
+      expect(
+        calculateTeachingWeekOrNull(semesterStart, DateTime(2026, 8, 17)),
+        isNull,
+      );
+    });
   });
 }

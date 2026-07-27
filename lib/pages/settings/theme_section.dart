@@ -86,60 +86,79 @@ class ThemeSection extends StatelessWidget {
                   runSpacing: 10,
                   children: [
                     for (final color in seedColors)
-                      GestureDetector(
-                        onTap: () => settings.setSeedColor(color),
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border:
+                      Semantics(
+                        button: true,
+                        selected:
+                            settings.seedColor.toARGB32() == color.toARGB32(),
+                        label: '主题色 ${seedColors.indexOf(color) + 1}',
+                        child: InkResponse(
+                          onTap: () => settings.setSeedColor(color),
+                          radius: 24,
+                          child: Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                              border:
+                                  settings.seedColor.toARGB32() ==
+                                      color.toARGB32()
+                                  ? Border.all(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface,
+                                      width: 3,
+                                    )
+                                  : null,
+                              boxShadow: [
+                                if (settings.seedColor.toARGB32() ==
+                                    color.toARGB32())
+                                  BoxShadow(
+                                    color: color.withValues(alpha: 0.4),
+                                    blurRadius: 8,
+                                  ),
+                              ],
+                            ),
+                            child:
                                 settings.seedColor.toARGB32() ==
                                     color.toARGB32()
-                                ? Border.all(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurface,
-                                    width: 3,
+                                ? Icon(
+                                    Icons.check,
+                                    color: isDarkColor(color.toARGB32())
+                                        ? Colors.white
+                                        : Colors.black,
+                                    size: 20,
                                   )
                                 : null,
-                            boxShadow: [
-                              if (settings.seedColor.toARGB32() ==
-                                  color.toARGB32())
-                                BoxShadow(
-                                  color: color.withValues(alpha: 0.4),
-                                  blurRadius: 8,
-                                ),
-                            ],
                           ),
-                          child:
-                              settings.seedColor.toARGB32() == color.toARGB32()
-                              ? const Icon(
-                                  Icons.check,
-                                  color: Colors.white,
-                                  size: 20,
-                                )
-                              : null,
                         ),
                       ),
                     // 自定义颜色按钮
-                    GestureDetector(
-                      onTap: () => _pickCustomSeedColor(context, settings),
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.outline,
-                            width: 1.5,
+                    Semantics(
+                      button: true,
+                      selected: !seedColors.any(
+                        (color) =>
+                            color.toARGB32() == settings.seedColor.toARGB32(),
+                      ),
+                      label: '自定义主题色',
+                      child: InkResponse(
+                        onTap: () => _pickCustomSeedColor(context, settings),
+                        radius: 24,
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outline,
+                              width: 1.5,
+                            ),
                           ),
-                        ),
-                        child: Icon(
-                          Icons.palette,
-                          size: 20,
-                          color: Theme.of(context).colorScheme.onSurface,
+                          child: Icon(
+                            Icons.palette,
+                            size: 20,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                         ),
                       ),
                     ),

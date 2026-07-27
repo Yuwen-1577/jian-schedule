@@ -71,12 +71,12 @@ Future<void> backgroundCallback(Uri? uri) async {
     final courses = await db.getCoursesBySet(activeSet.id);
     final timeSlots = await db.getTimeSlots();
     final today = DateTime.now().weekday;
-    final currentWeek = calculateCurrentWeek(activeSet.semesterStart);
+    final currentWeek = calculateCurrentTeachingWeek(activeSet.semesterStart);
 
     // 过滤今日课程
     final todayCourses = courses.where((c) {
       if (c.day != today) return false;
-      if (!c.isActiveInWeek(currentWeek)) return false;
+      if (currentWeek == null || !c.isActiveInWeek(currentWeek)) return false;
       return true;
     }).toList()..sort((a, b) => a.startPeriod.compareTo(b.startPeriod));
 

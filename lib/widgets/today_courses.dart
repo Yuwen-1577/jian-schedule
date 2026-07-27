@@ -18,7 +18,8 @@ class TodayCourses extends StatelessWidget {
     final provider = context.watch<ScheduleProvider>();
     final cs = Theme.of(context).colorScheme;
     final today = DateTime.now().weekday;
-    final courses = provider.getCoursesForDay(provider.currentWeek, today);
+    final actualTeachingWeek = provider.actualTeachingWeek;
+    final courses = provider.getTodayCourses();
     final timeSlots = provider.timeSlots;
 
     return Column(
@@ -43,7 +44,9 @@ class TodayCourses extends StatelessWidget {
               ),
               const SizedBox(width: Gap.sm),
               Text(
-                '第${provider.currentWeek}周 ${weekdayNames[today - 1]}',
+                actualTeachingWeek == null
+                    ? '不在本学期内'
+                    : '第$actualTeachingWeek周 ${weekdayNames[today - 1]}',
                 style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
               ),
             ],
@@ -54,7 +57,7 @@ class TodayCourses extends StatelessWidget {
             padding: const EdgeInsets.all(Gap.xl),
             child: Center(
               child: Text(
-                '今天没有课程',
+                actualTeachingWeek == null ? '当前日期不在本学期内' : '今天没有课程',
                 style: TextStyle(color: cs.onSurfaceVariant),
               ),
             ),
@@ -64,7 +67,8 @@ class TodayCourses extends StatelessWidget {
             (course) => _TodayCourseItem(
               course: course,
               timeSlots: timeSlots,
-              onTap: () => CourseDetailBottomSheet.show(context, course: course),
+              onTap: () =>
+                  CourseDetailBottomSheet.show(context, course: course),
             ),
           ),
         if (timeSlots.isNotEmpty) const _CurrentTimeIndicator(),
@@ -144,7 +148,7 @@ class _TodayCourseItem extends StatelessWidget {
                       Text(
                         timeText,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           color: cs.onSurfaceVariant.withValues(alpha: 0.7),
                         ),
                       ),
