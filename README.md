@@ -9,6 +9,7 @@
 - 添加/编辑/删除课程（名称、教室、教师、时间、颜色、提醒）
 - 多课表集管理（创建/切换/重命名/删除）
 - Excel (.xlsx) 课表文件导入（智能表头检测、合并单元格、单双周识别）
+- 强智教务系统网页导入（无痕登录、本地解析、导入预览、仅新增/替换）
 - 自定义上课时间表
 - 今日课程侧边栏 + 当前节次进度指示
 - 课程提醒通知（5 分钟 / 10 分钟 / 15 分钟 / 30 分钟 / 1 小时）
@@ -67,9 +68,9 @@ lib/
 
 | 平台 | 状态 |
 |------|------|
-| Android | 主要开发平台，已验证 Debug 编译、安装与真机运行 |
+| Android | 主要发布平台，已验证正式签名 Release APK 构建 |
 | iOS / macOS | 实验性，原生依赖与网络权限仍需完整验证 |
-| Windows / Linux | 实验性，需按目标机器逐平台验证插件行为 |
+| Windows / Linux | 实验性；Windows Debug 已完成启动验证 |
 | Web | 暂不建议发布，当前数据层和文件导入仍依赖 `dart:io` / SQLite |
 
 ### 环境要求
@@ -82,26 +83,35 @@ lib/
 
 ```bash
 flutter pub get
-flutter build apk --debug
+flutter build apk --release
 ```
 
-APK 输出：`build/app/outputs/flutter-apk/app-debug.apk`
+APK 输出：`build/app/outputs/apk/release/JianSchedule_v2.6.0.apk`
 
-Debug 版使用独立包名 `com.suda.yzune.class_schedule.debug` 和应用名“简课表 Debug”，可以与历史正式版共存，不会覆盖其数据。
+> 正式发布构建使用本地 `release.keystore` 签名；密钥与密码文件不得提交到仓库。
 
 ### 安装到手机
 
 ```bash
-adb install -r build/app/outputs/flutter-apk/app-debug.apk
+adb install -r build/app/outputs/apk/release/JianSchedule_v2.6.0.apk
 ```
 
 或直接将 APK 传输到手机安装。
 
 ## 下载
 
-项目当前仅维护 Debug 测试版本，不再发布新的正式签名 APK。历史版本仍可在 [Releases](../../releases) 页面查看。
+从 [Releases](../../releases) 页面下载最新正式 APK。Debug 构建继续使用独立包名，可与正式版共存。
 
 ## 更新日志
+
+### v2.6.0 (2026-07-27)
+
+- **强智教务导入**：支持手动输入学校教务网址并登录，在本机解析 2024 工具提示版、2017 Element UI 版、通用表格版和旧版课表结构。
+- **隐私与安全**：网页会话使用无痕 WebView；账号、Cookie 和 HTML 不落盘、不上传。仅 Debug 允许在逐主机警告后访问 HTTP，Release 继续禁止明文流量。
+- **导入预览**：区分有效、重复和无效课程；默认仅新增，也可二次确认后原子替换当前课表集，其他课表和时间设置不受影响。
+- **交互升级**：重做周课表、日视图、课程编辑与主题设置的交互和视觉层级，保留药丸式周/日视图切换。
+- **稳定性**：课程颜色按名称稳定分配；错误周次不再自动扩展为全部周；修复 Windows 启动时调用移动端小组件接口的问题。
+- **质量保障**：新增四类合成 HTML、重复导入、事务回滚和安全边界测试；完整测试与 Windows Debug 启动验证通过。
 
 ### v2.5.1 (2026-07-13)
 
