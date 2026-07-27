@@ -5,6 +5,8 @@ import '../models/course.dart';
 import '../models/schedule_set.dart';
 import '../models/time_slot.dart';
 import '../services/database_service.dart';
+import '../services/edu_import/edu_import_commit_service.dart';
+import '../services/edu_import/edu_import_models.dart';
 import '../services/notification_service.dart';
 import '../services/widget_service.dart';
 import '../utils/constants.dart';
@@ -313,6 +315,35 @@ class ScheduleProvider extends ChangeNotifier {
     notifyListeners();
     _syncAll();
     return coursesToInsert.length;
+  }
+
+  Future<ImportCommitResult> commitEduImport(
+    EduImportBatch batch,
+    ImportMode mode,
+  ) async {
+    final plan = EduImportCommitService.createPlan(
+      batch: batch,
+      scheduleSetId: _activeSetId,
+      existingCourses: _courses,
+      mode: mode,
+    );
+
+    if (mode == ImportMode.replace) {
+      await _db.replaceCoursesForSet(_activeSetId, plan.courses);
+    } else if (plan.courses.isNotEmpty) {
+      await _db.insertCourses(plan.courses);
+    }
+
+    if (mode == ImportMode.replace || plan.courses.isNotEmpty) {
+      await _loadCoursesForActiveSet();
+      notifyListeners();
+      _syncAll();
+    }
+    return ImportCommitResult(
+      insertedCount: plan.courses.length,
+      skippedCount: plan.skippedCount,
+      invalidCount: plan.invalidCount,
+    );
   }
 
   String _courseFingerprint(Course course) {

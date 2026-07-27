@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/course.dart';
+import 'edu_import/edu_import_transaction.dart';
 import '../models/schedule_set.dart';
 import '../models/time_slot.dart';
 import '../utils/constants.dart';
@@ -252,6 +253,18 @@ class DatabaseService {
       );
     }
     await batch.commit(noResult: true);
+  }
+
+  Future<void> replaceCoursesForSet(
+    String scheduleSetId,
+    List<Course> courses,
+  ) async {
+    final db = await database;
+    await EduImportTransaction.replaceCoursesForSet(
+      db,
+      scheduleSetId: scheduleSetId,
+      courses: courses,
+    );
   }
 
   // ============ 时间表 CRUD ============

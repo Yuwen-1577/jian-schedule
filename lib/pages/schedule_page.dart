@@ -9,7 +9,7 @@ import '../utils/constants.dart';
 import '../widgets/today_courses.dart';
 import '../widgets/week_grid.dart';
 import 'course_edit_page.dart';
-import 'edu_import/webview_import_page.dart';
+import 'edu_import/strong_wisdom_import_page.dart';
 import 'schedule_set_manage_page.dart';
 import 'settings_page.dart';
 import 'time_setting_page.dart';
@@ -216,7 +216,7 @@ class _SchedulePageState extends State<SchedulePage> {
       case 'import_webview':
         await Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const WebviewImportPage()),
+          MaterialPageRoute(builder: (_) => const StrongWisdomImportPage()),
         );
         return;
       case 'import_ocr':

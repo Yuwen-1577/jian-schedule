@@ -22,11 +22,15 @@ void main() async {
     databaseFactory = databaseFactoryFfi;
   }
 
-  // 注册桌面小部件背景回调
-  HomeWidget.registerInteractivityCallback(backgroundCallback);
+  // HomeWidget 仅在移动端有后台回调实现。
+  if (Platform.isAndroid || Platform.isIOS) {
+    await HomeWidget.registerInteractivityCallback(backgroundCallback);
+  }
 
-  // 初始化通知服务
-  await NotificationService().initialize();
+  // Windows / Linux 没有当前通知插件实现，启动时直接跳过。
+  if (Platform.isAndroid || Platform.isIOS || Platform.isMacOS) {
+    await NotificationService().initialize();
+  }
 
   final settings = SettingsProvider();
   await settings.init();
