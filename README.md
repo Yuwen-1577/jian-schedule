@@ -15,7 +15,7 @@
 - 课程提醒通知（5 分钟 / 10 分钟 / 15 分钟 / 30 分钟 / 1 小时）
 - Material 3 主题 + 10 种预设主题色 + 自定义颜色
 - 浅色 / 深色 / 跟随系统主题
-- JSON 数据导出/导入备份
+- JSON 数据导出/导入备份（通过系统文件选择器保存和恢复）
 - 学期起始日设置（自动计算当前教学周）
 - Android 桌面小部件（今日课程 / 课程列表 / 周课表网格）
 
@@ -43,10 +43,12 @@ lib/
 ├── pages/
 │   ├── schedule_page.dart           # 主页：PageView 横向滑动 + 侧边栏 + 课表集切换
 │   ├── course_edit_page.dart        # 课程编辑表单（含提醒时间选择）
+│   ├── course_detail_sheet.dart     # 课程详情只读浏览面板
 │   ├── time_setting_page.dart       # 时间表配置
-│   ├── settings_page.dart           # 设置页（主题、导出/导入、Excel导入、通知）
+│   ├── settings_page.dart           # 设置页（主题、备份、Excel/教务导入、通知）
 │   ├── schedule_set_manage_page.dart # 课表集管理（创建/重命名/删除）
-│   └── about_page.dart              # 关于页面（版本、平台、技术栈）
+│   ├── about_page.dart              # 关于页面（版本、平台、技术栈）
+│   └── edu_import/                  # 强智教务网页导入页面与预览流程
 ├── widgets/
 │   ├── week_grid.dart         # 周课表网格（课程色块定位、重叠处理）
 │   ├── course_card.dart       # 课程色块卡片
@@ -56,6 +58,7 @@ lib/
 ├── services/
 │   ├── database_service.dart  # sqflite CRUD + JSON 导出/导入
 │   ├── notification_service.dart # 课程提醒通知调度
+│   ├── schedule_backup_file_service.dart # 系统文件选择器备份保存
 │   ├── widget_service.dart    # 桌面小部件数据同步
 │   └── xls_import_service.dart # Excel (.xlsx) 课表解析导入
 └── utils/
@@ -86,23 +89,31 @@ flutter pub get
 flutter build apk --release
 ```
 
-APK 输出：`build/app/outputs/apk/release/JianSchedule_v2.6.0.apk`
+APK 输出：`build/app/outputs/apk/release/JianSchedule_v2.6.1.apk`
 
 > 正式发布构建使用本地 `release.keystore` 签名；密钥与密码文件不得提交到仓库。
 
 ### 安装到手机
 
 ```bash
-adb install -r build/app/outputs/apk/release/JianSchedule_v2.6.0.apk
+adb install -r build/app/outputs/apk/release/JianSchedule_v2.6.1.apk
 ```
 
 或直接将 APK 传输到手机安装。
 
 ## 下载
 
-从 [Releases](../../releases) 页面下载最新正式 APK。Debug 构建继续使用独立包名，可与正式版共存。
+从 [Latest Release](../../releases/latest) 下载最新正式 APK，也可在 [Releases](../../releases) 查看历史版本。Debug 构建继续使用独立包名，可与正式版共存。
 
 ## 更新日志
+
+### v2.6.1 (2026-07-31)
+
+- **强智信息补全**：修复课程教师、教室可能丢失的问题，兼容 `老师`、`教师`、`任课老师`、`任课教师`、`教室`、`地点` 和 `上课地点` 等页面标签。
+- **导入预览**：新增“缺教师”“缺教室”统计，并在课程卡片中直接展示已解析的教师和教室，避免静默导入残缺信息。
+- **可用备份**：JSON 导出改用系统“保存文件”流程，可保存到 Download 等用户选择的位置，并能通过普通文件选择器重新导入。
+- **升级兼容**：v2.6.0 可直接覆盖升级并保留数据；若曾用 v2.6.0 导入强智课表，建议在确认预览后选择“替换当前课表”，以清理旧版缺少教师/教室的课程。
+- **质量保障**：完成 38 项自动化测试，并在 Android 模拟器验证覆盖升级、备份恢复、真实强智导入和会话退出清理。
 
 ### v2.6.0 (2026-07-27)
 
@@ -112,7 +123,7 @@ adb install -r build/app/outputs/apk/release/JianSchedule_v2.6.0.apk
 - **交互升级**：重做周课表、日视图、课程编辑与主题设置的交互和视觉层级，保留药丸式周/日视图切换。
 - **稳定性**：课程颜色按名称稳定分配；错误周次不再自动扩展为全部周；修复 Windows 启动时调用移动端小组件接口的问题。
 - **质量保障**：新增四类合成 HTML、重复导入、事务回滚和安全边界测试；完整测试与 Windows Debug 启动验证通过。
-- **签名迁移**：v2.6.0 启用新的正式签名。已安装历史正式版的用户需先导出 JSON 备份，再卸载旧版、安装新版并导入备份；后续正式更新将沿用此签名。
+- **签名迁移**：v2.6.0 启用新的正式签名，后续正式更新继续沿用。v2.5.0 及更早版本使用旧签名，无法直接覆盖安装；由于旧版导出文件位于应用私有目录，普通用户无法安全取出，因此无法提供普通用户无损迁移方案。
 
 ### v2.5.1 (2026-07-13)
 
