@@ -3,12 +3,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
-import 'package:path/path.dart' as p;
 import '../../providers/schedule_provider.dart';
 
 import '../../services/excel_import_helper.dart';
+import '../../services/schedule_backup_file_service.dart';
 
 import 'settings_widgets.dart';
 
@@ -20,17 +19,17 @@ class DataSection extends StatelessWidget {
       final jsonStr = await provider.exportJson();
       if (!context.mounted) return;
 
-      final dir = await getApplicationDocumentsDirectory();
       final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-      final filePath = p.join(dir.path, 'schedule_backup_$timestamp.json');
-      final file = File(filePath);
-      await file.writeAsString(jsonStr);
+      final fileName = 'schedule_backup_$timestamp.json';
+      final saved = await ScheduleBackupFileService.platform().saveJson(
+        jsonContent: jsonStr,
+        fileName: fileName,
+      );
+      if (!saved || !context.mounted) return;
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('已导出到: $filePath')));
-      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('已保存：$fileName')));
     } catch (e) {
       if (!context.mounted) return;
       _showError(context, '导出失败: $e');

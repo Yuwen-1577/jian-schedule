@@ -89,6 +89,65 @@ void main() {
     expect(course.activeWeeks, List.generate(16, (index) => index + 1));
   });
 
+  test('解析通用 kbcontent 的 title 元数据：教师、教室和别名', () {
+    final batch = parseFixture('''
+      <table id="kbtable">
+        <tr><th>节次</th><th>周一</th><th>周二</th></tr>
+        <tr>
+          <td>1-2</td>
+          <td>
+            <div class="kbcontent">
+              线性代数<br>
+              <font title="老师">林老师</font><br>
+              <font title="周次">2-8周</font><br>
+              <font title="节次">[01-02节]</font><br>
+              <font title="教室">理A101</font>
+            </div>
+          </td>
+          <td>
+            <div class="kbcontent">
+              大学物理<br>
+              <span title="任课教师：">周老师</span><br>
+              <span title="周次">3-9周单周</span><br>
+              <span title="节次">[03-04节]</span><br>
+              <span title="上课地点">实验楼B203</span>
+            </div>
+          </td>
+        </tr>
+      </table>
+    ''');
+
+    expect(batch.parserVersions, [StrongWisdomParser.versionCommon]);
+    expect(batch.validDrafts, hasLength(2));
+    expect(batch.validDrafts.first.teacher, '林老师');
+    expect(batch.validDrafts.first.room, '理A101');
+    expect(batch.validDrafts.last.teacher, '周老师');
+    expect(batch.validDrafts.last.room, '实验楼B203');
+  });
+
+  test('结构化属性优先于 title 元数据和标签文本', () {
+    final batch = parseFixture('''
+      <table id="kbtable">
+        <tr><th>节次</th><th>周一</th></tr>
+        <tr><td>1</td><td>
+          <div class="kbcontent"
+            data-name="数据结构" data-teacher="属性教师"
+            data-room="属性教室" data-weeks="1-8周"
+            data-period="1-2节">
+            教师：文本教师<br>
+            教室：文本教室<br>
+            <span title="教师">标题教师</span>
+            <span title="地点">标题教室</span>
+          </div>
+        </td></tr>
+      </table>
+    ''');
+
+    final course = batch.validDrafts.single;
+    expect(course.teacher, '属性教师');
+    expect(course.room, '属性教室');
+  });
+
   test('解析旧版 title/br 结构', () {
     final batch = parseFixture('''
       <table id="kb">

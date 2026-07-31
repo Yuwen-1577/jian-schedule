@@ -65,6 +65,12 @@ class _EduImportPreviewPageState extends State<EduImportPreviewPage> {
     final theme = Theme.of(context);
     final validDrafts = widget.batch.validDrafts;
     final invalidDrafts = widget.batch.invalidDrafts;
+    final missingTeacherCount = validDrafts
+        .where((draft) => draft.teacher.isEmpty)
+        .length;
+    final missingRoomCount = validDrafts
+        .where((draft) => draft.room.isEmpty)
+        .length;
 
     return Scaffold(
       appBar: AppBar(title: const Text('导入预览')),
@@ -106,8 +112,25 @@ class _EduImportPreviewPageState extends State<EduImportPreviewPage> {
                 count: invalidDrafts.length,
                 color: theme.colorScheme.error,
               ),
+              _CountChip(
+                label: '缺教师',
+                count: missingTeacherCount,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              _CountChip(
+                label: '缺教室',
+                count: missingRoomCount,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ],
           ),
+          if (missingTeacherCount > 0 || missingRoomCount > 0) ...[
+            const SizedBox(height: 12),
+            const _NoticeCard(
+              icon: Icons.info_outline,
+              message: '教师或教室允许为空；写入前请与教务页面核对缺失项目。',
+            ),
+          ],
           if (widget.batch.blockedCrossOriginFrameCount > 0) ...[
             const SizedBox(height: 12),
             _NoticeCard(

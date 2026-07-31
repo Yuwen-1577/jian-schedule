@@ -226,12 +226,22 @@ class StrongWisdomParser {
       (line) => line.contains('周') || line.contains('节'),
       orElse: () => '',
     );
-    final weeksText = attribute('data-weeks').isNotEmpty
-        ? attribute('data-weeks')
-        : scheduleLine;
-    final periodText = attribute('data-period').isNotEmpty
-        ? attribute('data-period')
-        : scheduleLine;
+    final weeksText = _firstNonEmpty([
+      attribute('data-weeks'),
+      _titledValue(source, const ['周次', '周数', '上课周次']),
+      lines.firstWhere(
+        (line) => line.contains('周'),
+        orElse: () => scheduleLine,
+      ),
+    ]);
+    final periodText = _firstNonEmpty([
+      attribute('data-period'),
+      _titledValue(source, const ['节次', '节/周', '上课节次']),
+      lines.firstWhere(
+        (line) => line.contains('节'),
+        orElse: () => scheduleLine,
+      ),
+    ]);
 
     final name =
         (attribute('data-name').isNotEmpty
@@ -244,17 +254,20 @@ class StrongWisdomParser {
                     orElse: () => '',
                   ))
             .trim();
-    final teacher = _labeledValue(lines, const [
-      '教师',
-      '老师',
-    ], fallback: attribute('data-teacher'));
-    final room = _labeledValue(lines, const [
-      '教室',
-      '地点',
-    ], fallback: attribute('data-room'));
-    final note = _labeledValue(lines, const [
-      '备注',
-    ], fallback: attribute('data-note'));
+    final teacher = _firstNonEmpty([
+      attribute('data-teacher'),
+      _titledValue(source, const ['老师', '教师', '任课老师', '任课教师']),
+      _labeledValue(lines, const ['老师', '教师', '任课老师', '任课教师']),
+    ]);
+    final room = _firstNonEmpty([
+      attribute('data-room'),
+      _titledValue(source, const ['教室', '地点', '上课地点']),
+      _labeledValue(lines, const ['教室', '地点', '上课地点']),
+    ]);
+    final note = _firstNonEmpty([
+      attribute('data-note'),
+      _labeledValue(lines, const ['备注']),
+    ]);
 
     final day =
         _parseDay(attribute('data-day')) ?? dayHint ?? _dayFromText(rawText);
@@ -279,12 +292,7 @@ class StrongWisdomParser {
     );
   }
 
-  static String _labeledValue(
-    List<String> lines,
-    List<String> labels, {
-    required String fallback,
-  }) {
-    if (fallback.isNotEmpty) return fallback;
+  static String _labeledValue(List<String> lines, List<String> labels) {
     for (final line in lines) {
       for (final label in labels) {
         final match = RegExp('^$label[：:]?\\s*(.+)\$').firstMatch(line);
@@ -294,8 +302,35 @@ class StrongWisdomParser {
     return '';
   }
 
+  static String _titledValue(Element source, List<String> labels) {
+    final normalizedLabels = labels.map(_normalizeLabel).toSet();
+    final candidates = <Element>[source, ...source.querySelectorAll('[title]')];
+    for (final candidate in candidates) {
+      final title = candidate.attributes['title'];
+      if (title == null || !normalizedLabels.contains(_normalizeLabel(title))) {
+        continue;
+      }
+      final value = _textWithBreaks(
+        candidate,
+      ).replaceAll(RegExp(r'\s+'), ' ').trim();
+      if (value.isNotEmpty) return value;
+    }
+    return '';
+  }
+
+  static String _normalizeLabel(String value) {
+    return value.replaceAll(RegExp(r'[\s：:]+'), '');
+  }
+
+  static String _firstNonEmpty(Iterable<String> values) {
+    return values.firstWhere(
+      (value) => value.trim().isNotEmpty,
+      orElse: () => '',
+    );
+  }
+
   static bool _isMetadataLine(String line) {
-    return RegExp(r'^(教师|老师|教室|地点|备注)[：:]').hasMatch(line);
+    return RegExp(r'^(教师|老师|任课教师|任课老师|教室|地点|上课地点|备注)[：:]').hasMatch(line);
   }
 
   static (int, int)? _parsePeriods(String value) {
