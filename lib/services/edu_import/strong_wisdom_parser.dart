@@ -2,6 +2,7 @@ import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html_parser;
 
 import '../../utils/course_parser_utils.dart';
+import 'edu_import_diagnostics.dart';
 import 'edu_import_models.dart';
 
 class StrongWisdomParser {
@@ -10,35 +11,97 @@ class StrongWisdomParser {
   static const String versionCommon = '强智通用表格版';
   static const String versionLegacy = '强智旧版';
 
+  static final List<_ParserRule> _rules = [
+    const _ParserRule(
+      id: 'strong-wisdom-2024',
+      version: version2024,
+      parse: _parse2024,
+    ),
+    const _ParserRule(
+      id: 'strong-wisdom-2017',
+      version: version2017,
+      parse: _parse2017,
+    ),
+    const _ParserRule(
+      id: 'strong-wisdom-common',
+      version: versionCommon,
+      parse: _parseCommon,
+    ),
+    const _ParserRule(
+      id: 'strong-wisdom-legacy',
+      version: versionLegacy,
+      parse: _parseLegacy,
+    ),
+  ];
+
   static EduImportBatch parse(CapturedPageBundle bundle) {
+    return parseDetailed(bundle).batch;
+  }
+
+  static EduImportParseResult parseDetailed(CapturedPageBundle bundle) {
+    final parsedDocuments = bundle.documents
+        .map((captured) => html_parser.parse(captured.html))
+        .toList(growable: false);
     final allDrafts = <ImportedCourseDraft>[];
     final parserVersions = <String>[];
+    final ruleDiagnostics = <EduImportRuleDiagnostic>[];
 
-    for (final captured in bundle.documents) {
-      final document = html_parser.parse(captured.html);
-      final attempts = <_ParseAttempt>[
-        _parse2024(document),
-        _parse2017(document),
-        _parseCommon(document),
-        _parseLegacy(document),
-      ];
+    for (
+      var documentIndex = 0;
+      documentIndex < parsedDocuments.length;
+      documentIndex++
+    ) {
+      final document = parsedDocuments[documentIndex];
+      final runs = _rules
+          .map((rule) => _ParserRun(rule, rule.parse(document)))
+          .toList(growable: false);
 
-      _ParseAttempt? selected;
-      for (final attempt in attempts) {
-        if (attempt.drafts.any((draft) => draft.isValid)) {
-          selected = attempt;
+      _ParserRun? selected;
+      for (final run in runs) {
+        if (run.attempt.drafts.any((draft) => draft.isValid)) {
+          selected = run;
           break;
         }
       }
-      selected ??= attempts.cast<_ParseAttempt?>().firstWhere(
-        (attempt) => attempt!.drafts.isNotEmpty,
-        orElse: () => null,
-      );
-      if (selected == null) continue;
+      if (selected == null) {
+        for (final run in runs) {
+          if (run.attempt.drafts.isNotEmpty) {
+            selected = run;
+            break;
+          }
+        }
+      }
 
-      allDrafts.addAll(selected.drafts);
-      if (!parserVersions.contains(selected.version)) {
-        parserVersions.add(selected.version);
+      if (selected != null) {
+        allDrafts.addAll(selected.attempt.drafts);
+        if (!parserVersions.contains(selected.rule.version)) {
+          parserVersions.add(selected.rule.version);
+        }
+      }
+
+      for (final run in runs) {
+        final issueCounts = <String, int>{};
+        for (final draft in run.attempt.drafts) {
+          for (final issue in draft.validationIssues) {
+            issueCounts.update(issue, (count) => count + 1, ifAbsent: () => 1);
+          }
+        }
+        ruleDiagnostics.add(
+          EduImportRuleDiagnostic(
+            documentIndex: documentIndex,
+            ruleId: run.rule.id,
+            version: run.rule.version,
+            selected: run.rule.id == selected?.rule.id,
+            draftCount: run.attempt.drafts.length,
+            validCount: run.attempt.drafts
+                .where((draft) => draft.isValid)
+                .length,
+            invalidCount: run.attempt.drafts
+                .where((draft) => !draft.isValid)
+                .length,
+            validationIssueCounts: Map.unmodifiable(issueCounts),
+          ),
+        );
       }
     }
 
@@ -47,11 +110,18 @@ class StrongWisdomParser {
       unique.putIfAbsent(draft.fingerprint, () => draft);
     }
 
-    return EduImportBatch(
+    final batch = EduImportBatch(
       drafts: unique.values.toList(growable: false),
       parserVersions: parserVersions,
       blockedCrossOriginFrameCount: bundle.blockedCrossOriginFrameCount,
     );
+    final diagnostics = EduImportDiagnosticBuilder.build(
+      parsedDocuments: parsedDocuments,
+      capturedDocuments: bundle.documents,
+      ruleAttempts: ruleDiagnostics,
+      blockedCrossOriginFrameCount: bundle.blockedCrossOriginFrameCount,
+    );
+    return EduImportParseResult(batch: batch, diagnostics: diagnostics);
   }
 
   static _ParseAttempt _parse2024(Document document) {
@@ -399,6 +469,25 @@ class StrongWisdomParser {
     if (node.localName == 'br' || node.localName == 'hr') return '\n';
     return node.nodes.map(_textWithBreaks).join();
   }
+}
+
+class _ParserRule {
+  const _ParserRule({
+    required this.id,
+    required this.version,
+    required this.parse,
+  });
+
+  final String id;
+  final String version;
+  final _ParseAttempt Function(Document document) parse;
+}
+
+class _ParserRun {
+  const _ParserRun(this.rule, this.attempt);
+
+  final _ParserRule rule;
+  final _ParseAttempt attempt;
 }
 
 class _ParseAttempt {

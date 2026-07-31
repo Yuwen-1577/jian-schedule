@@ -10,6 +10,7 @@
 - 多课表集管理（创建/切换/重命名/删除）
 - Excel (.xlsx) 课表文件导入（智能表头检测、合并单元格、单双周识别）
 - 强智教务系统网页导入（无痕登录、本地解析、导入预览、仅新增/替换）
+- 教务解析诊断导出（安全结构 JSON / 二次确认的深度脱敏 HTML，均只在本机生成）
 - 自定义上课时间表
 - 今日课程侧边栏 + 当前节次进度指示
 - 课程提醒通知（5 分钟 / 10 分钟 / 15 分钟 / 30 分钟 / 1 小时）
@@ -58,7 +59,8 @@ lib/
 ├── services/
 │   ├── database_service.dart  # sqflite CRUD + JSON 导出/导入
 │   ├── notification_service.dart # 课程提醒通知调度
-│   ├── schedule_backup_file_service.dart # 系统文件选择器备份保存
+│   ├── schedule_backup_file_service.dart # 课表备份保存入口
+│   ├── user_file_save_service.dart # 通用系统文件保存
 │   ├── widget_service.dart    # 桌面小部件数据同步
 │   └── xls_import_service.dart # Excel (.xlsx) 课表解析导入
 └── utils/
@@ -89,14 +91,14 @@ flutter pub get
 flutter build apk --release
 ```
 
-APK 输出：`build/app/outputs/apk/release/JianSchedule_v2.6.1.apk`
+APK 输出：`build/app/outputs/apk/release/JianSchedule_v2.6.2.apk`
 
 > 正式发布构建使用本地 `release.keystore` 签名；密钥与密码文件不得提交到仓库。
 
 ### 安装到手机
 
 ```bash
-adb install -r build/app/outputs/apk/release/JianSchedule_v2.6.1.apk
+adb install -r build/app/outputs/apk/release/JianSchedule_v2.6.2.apk
 ```
 
 或直接将 APK 传输到手机安装。
@@ -106,6 +108,14 @@ adb install -r build/app/outputs/apk/release/JianSchedule_v2.6.1.apk
 从 [Latest Release](../../releases/latest) 下载最新正式 APK，也可在 [Releases](../../releases) 查看历史版本。Debug 构建继续使用独立包名，可与正式版共存。
 
 ## 更新日志
+
+### v2.6.2 (2026-07-31)
+
+- **两级诊断报告**：解析失败或结果可能不完整时，可导出安全结构 JSON；经过二次确认后也可导出保留静态 DOM 特征的深度脱敏 HTML。
+- **隐私边界**：诊断只在本机生成，不自动上传；移除网址、账号、Cookie、课程名、教师、教室、表单输入、脚本与动态标识，深度报告发送前仍提示人工检查。
+- **适配基础设施**：四类强智规则改为可观测的有序规则链，记录各规则有效、无效及校验问题统计，不改变原有课程选择和去重结果。
+- **发布自动检查**：新增 GitHub Actions，固定 Flutter 3.41.8 与 JDK 17，自动运行依赖安装、静态分析、完整测试和 Debug APK 构建；CI 不接触正式签名。
+- **发布规范**：新增 [Android 发布检查清单](docs/RELEASE_CHECKLIST.md)，覆盖版本、签名、安全、模拟器验收、README、标签和 APK 摘要。
 
 ### v2.6.1 (2026-07-31)
 

@@ -6,12 +6,17 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/schedule_provider.dart';
+import '../../services/edu_import/edu_import_diagnostic_export_service.dart';
+import '../../services/edu_import/edu_import_diagnostics.dart';
 import '../../services/edu_import/strong_wisdom_parser.dart';
 import '../../services/edu_import/webview_capture_service.dart';
+import 'edu_import_diagnostic_dialog.dart';
 import 'edu_import_preview_page.dart';
 
 class StrongWisdomImportPage extends StatefulWidget {
-  const StrongWisdomImportPage({super.key});
+  const StrongWisdomImportPage({super.key, this.diagnosticExporter});
+
+  final EduImportDiagnosticExportCallback? diagnosticExporter;
 
   @override
   State<StrongWisdomImportPage> createState() => _StrongWisdomImportPageState();
@@ -24,6 +29,7 @@ class _StrongWisdomImportPageState extends State<StrongWisdomImportPage> {
   double _progress = 0;
   bool _isLoadingPage = false;
   bool _isCapturing = false;
+  bool _isExportingDiagnostics = false;
   String? _loadError;
 
   @override
@@ -112,17 +118,44 @@ class _StrongWisdomImportPageState extends State<StrongWisdomImportPage> {
     );
   }
 
+  Future<EduImportParseResult> _captureAndParse(
+    InAppWebViewController controller,
+  ) async {
+    final bundle = await WebViewCaptureService.capture(controller);
+    return StrongWisdomParser.parseDetailed(bundle);
+  }
+
+  Future<void> _exportDiagnostics(EduImportDiagnostics diagnostics) async {
+    if (_isExportingDiagnostics) return;
+    setState(() => _isExportingDiagnostics = true);
+    try {
+      final exporter =
+          widget.diagnosticExporter ??
+          EduImportDiagnosticExportService.platform().save;
+      await exportEduImportDiagnostics(
+        context: context,
+        diagnostics: diagnostics,
+        exporter: exporter,
+      );
+    } finally {
+      if (mounted) setState(() => _isExportingDiagnostics = false);
+    }
+  }
+
   Future<void> _captureAndPreview() async {
     final controller = _webViewController;
     if (controller == null || _isCapturing) return;
     setState(() => _isCapturing = true);
 
     try {
-      final bundle = await WebViewCaptureService.capture(controller);
-      final batch = StrongWisdomParser.parse(bundle);
+      final parseResult = await _captureAndParse(controller);
+      final batch = parseResult.batch;
       if (!mounted) return;
       if (batch.drafts.isEmpty) {
-        await _showNoCoursesDialog();
+        final shouldExport = await _showNoCoursesDialog();
+        if (shouldExport && mounted) {
+          await _exportDiagnostics(parseResult.diagnostics);
+        }
         return;
       }
 
@@ -132,6 +165,8 @@ class _StrongWisdomImportPageState extends State<StrongWisdomImportPage> {
         MaterialPageRoute(
           builder: (context) => EduImportPreviewPage(
             batch: batch,
+            diagnostics: parseResult.diagnostics,
+            onExportDiagnostics: _exportDiagnostics,
             existingCourses: provider.courses,
             scheduleSetName: provider.activeSet?.name ?? '当前课表',
           ),
@@ -157,23 +192,8 @@ class _StrongWisdomImportPageState extends State<StrongWisdomImportPage> {
     }
   }
 
-  Future<void> _showNoCoursesDialog() {
-    return showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('没有识别到课程'),
-        content: const Text(
-          '请确认已经登录，并打开“我的课表”或“班级课表”页面。'
-          '\n\n不同学校页面结构可能不同；后续可用脱敏 HTML 样本继续适配。',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('返回检查'),
-          ),
-        ],
-      ),
-    );
+  Future<bool> _showNoCoursesDialog() {
+    return showNoEduImportCoursesDialog(context);
   }
 
   void _showMessage(String message) {

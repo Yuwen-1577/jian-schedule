@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/course.dart';
 import '../../services/edu_import/edu_import_commit_service.dart';
+import '../../services/edu_import/edu_import_diagnostics.dart';
 import '../../services/edu_import/edu_import_models.dart';
 import '../../utils/constants.dart';
 
@@ -11,11 +12,16 @@ class EduImportPreviewPage extends StatefulWidget {
     required this.batch,
     required this.existingCourses,
     required this.scheduleSetName,
+    this.diagnostics,
+    this.onExportDiagnostics,
   });
 
   final EduImportBatch batch;
   final List<Course> existingCourses;
   final String scheduleSetName;
+  final EduImportDiagnostics? diagnostics;
+  final Future<void> Function(EduImportDiagnostics diagnostics)?
+  onExportDiagnostics;
 
   @override
   State<EduImportPreviewPage> createState() => _EduImportPreviewPageState();
@@ -23,11 +29,26 @@ class EduImportPreviewPage extends StatefulWidget {
 
 class _EduImportPreviewPageState extends State<EduImportPreviewPage> {
   ImportMode _mode = ImportMode.append;
+  bool _isExportingDiagnostics = false;
 
   int get _duplicateCount => EduImportCommitService.duplicateCount(
     batch: widget.batch,
     existingCourses: widget.existingCourses,
   );
+
+  Future<void> _exportDiagnostics() async {
+    final diagnostics = widget.diagnostics;
+    final exporter = widget.onExportDiagnostics;
+    if (diagnostics == null || exporter == null || _isExportingDiagnostics) {
+      return;
+    }
+    setState(() => _isExportingDiagnostics = true);
+    try {
+      await exporter(diagnostics);
+    } finally {
+      if (mounted) setState(() => _isExportingDiagnostics = false);
+    }
+  }
 
   Future<void> _continueImport() async {
     if (_mode == ImportMode.replace) {
@@ -71,6 +92,11 @@ class _EduImportPreviewPageState extends State<EduImportPreviewPage> {
     final missingRoomCount = validDrafts
         .where((draft) => draft.room.isEmpty)
         .length;
+    final showDiagnosticAction =
+        invalidDrafts.isNotEmpty ||
+        widget.batch.blockedCrossOriginFrameCount > 0 ||
+        missingTeacherCount > 0 ||
+        missingRoomCount > 0;
 
     return Scaffold(
       appBar: AppBar(title: const Text('导入预览')),
@@ -138,6 +164,15 @@ class _EduImportPreviewPageState extends State<EduImportPreviewPage> {
               message:
                   '有 ${widget.batch.blockedCrossOriginFrameCount} 个跨域框架无法读取。'
                   '若课程不完整，请在框架内打开课表后重试。',
+            ),
+          ],
+          if (showDiagnosticAction &&
+              widget.diagnostics != null &&
+              widget.onExportDiagnostics != null) ...[
+            const SizedBox(height: 12),
+            _DiagnosticNoticeCard(
+              isLoading: _isExportingDiagnostics,
+              onPressed: _exportDiagnostics,
             ),
           ],
           const SizedBox(height: 24),
@@ -230,6 +265,54 @@ class _CountChip extends StatelessWidget {
       child: Text(
         '$label $count',
         style: TextStyle(color: color, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+class _DiagnosticNoticeCard extends StatelessWidget {
+  const _DiagnosticNoticeCard({
+    required this.isLoading,
+    required this.onPressed,
+  });
+
+  final bool isLoading;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 8, 8),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.bug_report_outlined, size: 20),
+              SizedBox(width: 8),
+              Expanded(child: Text('解析结果可能不完整，可保存本地诊断报告帮助后续适配。')),
+            ],
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: isLoading ? null : onPressed,
+              icon: isLoading
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.save_alt_outlined),
+              label: Text(isLoading ? '正在保存…' : '导出解析诊断'),
+            ),
+          ),
+        ],
       ),
     );
   }
